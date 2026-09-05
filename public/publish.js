@@ -243,6 +243,21 @@ function runPublish() {
   if (state.publishing) return;
   showPublishConfirm(computePublishDiff(), doPublish);
 }
+// Vor Vorschau/Veröffentlichung speichern: im generischen Modus (Tab „Felder“)
+// nur die Feldwerte; sonst gestagte Medien hochladen und den Home-Content sichern.
+async function saveBeforeBuild() {
+  if (state.generic) {
+    if (!(await saveDraft())) throw new Error('Speichern fehlgeschlagen');
+    return;
+  }
+  await uploadStagedReferenced();
+  const media = resolveMediaForSave();
+  const put = await api('/content', { method: 'PUT', body: buildPayload(media) });
+  if (!put.ok) throw new Error(put.data?.error || 'Speichern fehlgeschlagen');
+  state.loadedMedia = JSON.parse(JSON.stringify(media));
+  markSaved();
+}
+
 // Der eigentliche Veröffentlichen-Ablauf.
 async function doPublish() {
   if (state.publishing) return;
@@ -252,13 +267,7 @@ async function doPublish() {
   if (pn) pn.disabled = true;
   setPill('running', 'lädt Medien…');
   try {
-    await uploadStagedReferenced();
-    const media = resolveMediaForSave();
-    // Save mit finalen URLs
-    const put = await api('/content', { method: 'PUT', body: buildPayload(media) });
-    if (!put.ok) throw new Error(put.data?.error || 'Speichern fehlgeschlagen');
-    state.loadedMedia = JSON.parse(JSON.stringify(media));
-    markSaved();
+    await saveBeforeBuild();
     // Publish starten
     const msg = ($('#pubMsg')?.value || '').slice(0, 100);
     const pub = await api('/publish', { method: 'POST', body: { message: msg } });
@@ -295,12 +304,7 @@ $('#previewBtn').addEventListener('click', async () => {
   $('#publishBtn').disabled = true;
   setPill('running', 'Vorschau…');
   try {
-    await uploadStagedReferenced();
-    const media = resolveMediaForSave();
-    const put = await api('/content', { method: 'PUT', body: buildPayload(media) });
-    if (!put.ok) throw new Error(put.data?.error || 'Speichern fehlgeschlagen');
-    state.loadedMedia = JSON.parse(JSON.stringify(media));
-    markSaved();
+    await saveBeforeBuild();
     const pv = await api('/preview', { method: 'POST' });
     if (!pv.ok) throw new Error(pv.data?.error || 'Vorschau-Build fehlgeschlagen');
     pollPreview(win);
@@ -890,6 +894,11 @@ function computePublishDiff() {
   const add = (title, changes) => {
     if (changes.length) groups.push({ title, items: changes.map(fmtChange) });
   };
+  // Generischer Modus: nur die Feldwerte vergleichen.
+  if (state.generic) {
+    add('Felder', diffFlat(publishBaseline.generic || {}, cur.generic || {}));
+    return { total: groups.reduce((n, g) => n + g.items.length, 0), groups };
+  }
   for (const lang of MEDIA_LANGS) {
     add(
       `Texte ${lang.toUpperCase()}`,
