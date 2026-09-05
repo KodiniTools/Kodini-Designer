@@ -151,35 +151,49 @@ function createPublishJob(p) {
     // keine großen Dateien hinzu.
     if (p.uploads.repoDir) await run('git', ['add', '-A', '--', p.uploads.repoDir]);
 
-    // 2. Gibt es überhaupt Änderungen?
+    // Commit-Identität explizit setzen, damit kein globales git user.name/email
+    // auf dem Server nötig ist (Dienst läuft als www-data ohne git-Identität).
+    // Wird auch beim Rebase gebraucht (setzt die Commits neu).
+    const ident = [
+      '-c',
+      `user.name=${config.gitAuthorName}`,
+      '-c',
+      `user.email=${config.gitAuthorEmail}`,
+    ];
+
+    // 2. Gibt es Änderungen? Committen.
     const staged = await run('git', ['diff', '--cached', '--name-only']);
-    if (!staged) {
+    if (staged) {
+      state.step = 'commit';
+      log(`git commit: ${commitMsg}`);
+      await run('git', [...ident, 'commit', '-m', commitMsg]);
+      state.commit = (await run('git', ['rev-parse', '--short', 'HEAD'])).trim();
+    }
+
+    // Remote-Stand holen. Lokale Commits, die noch nicht auf dem Remote sind
+    // (auch aus früheren Läufen, deren Push scheiterte – z. B. Deploy-Key ohne
+    // Schreibrecht), müssen jetzt mit; deploy.sh setzt das Repo sonst hart auf
+    // den Remote-Stand zurück und die Änderungen wären verloren.
+    state.step = 'sync';
+    log(`git fetch ${remote} ${branch}`);
+    await run('git', ['fetch', remote, branch]);
+    const ahead = Number(
+      (await run('git', ['rev-list', '--count', `${remote}/${branch}..HEAD`])).trim(),
+    );
+    if (!staged && !ahead) {
       state.step = 'nochange';
       log(
         'Keine Content-Änderungen zu committen — überspringe Commit/Push, führe trotzdem Deploy aus.',
       );
     } else {
-      // Commit-Identität explizit setzen, damit kein globales git user.name/email
-      // auf dem Server nötig ist (Dienst läuft als www-data ohne git-Identität).
-      // Wird auch beim Rebase gebraucht (setzt die Commits neu).
-      const ident = [
-        '-c',
-        `user.name=${config.gitAuthorName}`,
-        '-c',
-        `user.email=${config.gitAuthorEmail}`,
-      ];
-
-      state.step = 'commit';
-      log(`git commit: ${commitMsg}`);
-      await run('git', [...ident, 'commit', '-m', commitMsg]);
-      state.commit = (await run('git', ['rev-parse', '--short', 'HEAD'])).trim();
-
-      // Remote-Stand holen und den Content-Commit darauf aufsetzen. Nötig, weil
-      // main z.B. durch gemergte Pull-Requests vorausgeeilt sein kann; sonst wird
-      // der Push als non-fast-forward abgelehnt ("Updates were rejected … fetch first").
-      state.step = 'sync';
-      log(`git fetch ${remote} ${branch}`);
-      await run('git', ['fetch', remote, branch]);
+      if (!staged)
+        log(
+          `${ahead} lokale(r) Commit(s) noch nicht auf ${remote}/${branch} – wird nachgeschoben.`,
+        );
+      if (!state.commit) state.commit = (await run('git', ['rev-parse', '--short', 'HEAD'])).trim();
+      // Den Content-Commit auf den Remote-Stand aufsetzen. Nötig, weil main z.B.
+      // durch gemergte Pull-Requests vorausgeeilt sein kann; sonst wird der Push
+      // als non-fast-forward abgelehnt ("Updates were rejected … fetch first").
       log(`git rebase ${remote}/${branch}`);
       try {
         await run('git', [...ident, 'rebase', `${remote}/${branch}`]);
