@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kodini Designer – Site-Profil",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "kind",
+    "languages",
+    "repo",
+    "webroot",
+    "content",
+    "uploads",
+    "build",
+    "deploy"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["astro-site", "vite-spa", "static"] },
+    "siteUrl": { "type": "string" },
+    "languages": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "repo": {
+      "type": "object",
+      "required": ["dir"],
+      "properties": {
+        "dir": { "type": "string" },
+        "branch": { "type": "string", "default": "main" },
+        "remote": { "type": "string", "default": "origin" }
+      }
+    },
+    "webroot": { "type": "string" },
+    "content": {
+      "type": "object",
+      "required": ["dir", "files", "commitPaths"],
+      "properties": {
+        "dir": { "type": "string" },
+        "files": {
+          "type": "object",
+          "required": ["media"],
+          "additionalProperties": { "type": "string" }
+        },
+        "locales": { "type": "object", "additionalProperties": { "type": "string" } },
+        "commitPaths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "uploads": {
+      "type": "object",
+      "required": ["dir"],
+      "properties": {
+        "dir": { "type": "string" },
+        "repoDir": { "type": "string" },
+        "urlPrefix": { "type": "string", "default": "/uploads" },
+        "gitMaxBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "fonts": {
+      "type": "object",
+      "properties": {
+        "dirs": { "type": "array", "items": { "type": "string" } },
+        "urlPrefix": { "type": "string", "default": "/fonts" }
+      }
+    },
+    "fontawesome": {
+      "type": "object",
+      "properties": { "dirs": { "type": "array", "items": { "type": "string" } } }
+    },
+    "build": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "env": { "type": "object", "additionalProperties": { "type": "string" } },
+        "timeoutMinutes": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "properties": {
+        "base": { "type": "string", "default": "/admin/preview/" },
+        "outDir": { "type": "string", "default": "dist-preview" },
+        "env": {
+          "type": "object",
+          "properties": { "base": { "type": "string" }, "outDir": { "type": "string" } }
+        }
+      }
+    },
+    "deploy": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "timeoutMinutes": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "codeUpdate": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
+    "tabs": { "type": "array", "items": { "type": "string" } }
+  }
+}

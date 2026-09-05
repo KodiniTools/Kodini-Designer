@@ -1,0 +1,75 @@
+{
+  "$schema": "../profile.schema.json",
+  "id": "kodinitools-home",
+  "name": "Kodinitools Home",
+  "kind": "astro-site",
+  "siteUrl": "https://kodinitools.com",
+  "languages": ["de", "en"],
+  "repo": {
+    "dir": "/opt/kodini/repo",
+    "branch": "main",
+    "remote": "origin"
+  },
+  "webroot": "/var/www/kodinitools.com",
+  "content": {
+    "dir": "src/content",
+    "files": {
+      "media": "media.json",
+      "overridesDe": "overrides.de.json",
+      "overridesEn": "overrides.en.json",
+      "tickerDe": "ticker.de.json",
+      "tickerEn": "ticker.en.json"
+    },
+    "locales": {
+      "de": "src/locales/de.json",
+      "en": "src/locales/en.json"
+    },
+    "commitPaths": [
+      "src/content/overrides.de.json",
+      "src/content/overrides.en.json",
+      "src/content/ticker.de.json",
+      "src/content/ticker.en.json",
+      "src/content/media.json"
+    ]
+  },
+  "uploads": {
+    "dir": "{webroot}/uploads",
+    "repoDir": "public/uploads",
+    "urlPrefix": "/uploads",
+    "gitMaxBytes": 26214400
+  },
+  "fonts": {
+    "dirs": ["{webroot}/fonts", "{repo}/public/fonts"],
+    "urlPrefix": "/fonts"
+  },
+  "fontawesome": {
+    "dirs": ["{webroot}/fontawesome", "{webroot}/public/fontawesome", "{repo}/public/fontawesome"]
+  },
+  "build": {
+    "command": ["npm", "run", "build"],
+    "env": { "ASTRO_TELEMETRY_DISABLED": "1", "DO_NOT_TRACK": "1" },
+    "timeoutMinutes": 15
+  },
+  "preview": {
+    "base": "/admin/preview/",
+    "outDir": "dist-preview",
+    "env": { "base": "ASTRO_BASE", "outDir": "ASTRO_OUT_DIR" }
+  },
+  "deploy": {
+    "command": ["./deploy.sh"],
+    "timeoutMinutes": 20
+  },
+  "codeUpdate": { "enabled": true },
+  "tabs": [
+    "ticker",
+    "texts",
+    "media",
+    "layout",
+    "design",
+    "background",
+    "cards",
+    "files",
+    "icons",
+    "advanced"
+  ]
+}

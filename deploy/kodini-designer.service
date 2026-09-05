@@ -1,0 +1,50 @@
+# systemd-Unit für den Kodini Designer (eigenständiger Admin-Dienst).
+#
+# Installation:
+#   sudo cp deploy/kodini-designer.service /etc/systemd/system/kodini-designer.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now kodini-designer
+#   systemctl status kodini-designer
+#
+# Der Dienst lauscht nur lokal auf 127.0.0.1:9020 und wird von nginx unter
+# /admin bzw. /admin/api reverse-proxied (siehe deploy/nginx-designer.conf).
+# Er ersetzt den bisherigen Dienst kodini-admin aus dem Website-Repo
+# (gleicher Port -> vorher: sudo systemctl disable --now kodini-admin).
+#
+# Voraussetzungen:
+#   - Designer-Klon unter /opt/kodini/designer (WorkingDirectory)
+#   - Website-Klon laut Profil (profiles/<id>/profile.json → repo.dir, z. B. /opt/kodini/repo)
+#   - /opt/kodini/.env mit Secrets + PROFILE=<id> (chmod 600)
+
+[Unit]
+Description=Kodini Designer (Website-Editor + Vorschau/Veröffentlichen)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/kodini/designer
+
+EnvironmentFile=/opt/kodini/.env
+Environment=NODE_ENV=production
+Environment=PORT=9020
+
+ExecStart=/usr/bin/node server/index.mjs
+
+Restart=on-failure
+RestartSec=3
+
+# --- Härtung ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+# Schreibzugriff nur auf die tatsächlich benötigten Pfade:
+#   - Website-Repo(s) der Profile : Content schreiben, git commit/push, Build
+#   - Webroot                     : deploy.sh spiegelt dist/ hierher (rsync)
+# Weitere Profile -> deren repo.dir hier ergänzen.
+ReadWritePaths=/opt/kodini/repo /var/www/kodinitools.com
+
+[Install]
+WantedBy=multi-user.target

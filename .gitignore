@@ -1,0 +1,19 @@
+# Dependencies (nur Dev-Tools: eslint/prettier)
+node_modules/
+
+# Secrets / lokale Umgebung
+.env
+.env.local
+
+# Logs
+*.log
+
+# Editor / OS
+.idea
+.vscode
+*.swp
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/

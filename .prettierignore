@@ -1,0 +1,4 @@
+node_modules/
+public/model.js
+public/ticker.js
+package-lock.json
