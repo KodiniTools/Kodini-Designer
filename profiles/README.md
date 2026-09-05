@@ -2,8 +2,9 @@
 
 Ein Profil beschreibt, **welche Website** der Designer bearbeitet. Der Code des
 Designers ist seitenunabhängig; alles Seitenspezifische steht im Manifest
-`profiles/<id>/profile.json`. Auswahl über `PROFILE=<id>` (oder
-`PROFILE_FILE=/pfad/profile.json`). Validierung: `server/profile.mjs`, Schema
+`profiles/<id>/profile.json`. Auswahl über `PROFILES=<id1>,<id2>` (Umschalter in
+der Kopfzeile, das erste ist Standard), `PROFILE=<id>` oder
+`PROFILE_FILE=/pfad/profile.json`. Validierung: `server/profile.mjs`, Schema
 für Editoren: `profile.schema.json`.
 
 Platzhalter in Pfaden: `{repo}` = Repo-Verzeichnis, `{webroot}` = Webroot.

@@ -12,7 +12,6 @@ import { readdir, stat, writeFile, mkdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config, profile } from './config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Startzeit des Prozesses: Server-Dateien, die danach geändert wurden, sind
@@ -52,14 +51,15 @@ export async function serverCodeChanged() {
  * ungespeicherten Dateien verweigert git den Merge, dann bleibt alles wie es
  * ist). Führt `npm ci` aus, wenn sich package.json/package-lock.json änderten.
  *
+ * @param {object} p Site-Profil (Repo, Branch, Remote)
  * @param {(cmd:string,args:string[],opts?:object)=>Promise<string>} run
  * @param {(line:string)=>void} log
  * @param {object} env Umgebung für npm (HOME etc.)
  * @returns {Promise<{updated:boolean, from:string, to:string, files:string[], error?:string}>}
  */
-export async function updateCodeFromRemote(run, log, env) {
-  const branch = config.gitBranch;
-  const remote = config.gitRemote;
+export async function updateCodeFromRemote(p, run, log, env) {
+  const branch = p.repo.branch;
+  const remote = p.repo.remote;
   const short = (h) =>
     String(h || '')
       .trim()
@@ -111,14 +111,14 @@ export async function restartIfServerCodeChanged(log) {
 }
 
 // --- Persistenz von Vorgangs-Status (Vorschau/Veröffentlichung) über einen
-// Neustart hinweg, damit das Frontend beim Polling das Ergebnis noch sieht. ---
-const STATE_DIR = profile.stateDir;
+// Neustart hinweg, damit das Frontend beim Polling das Ergebnis noch sieht.
+// Ordner je Profil: p.stateDir. ---
 
 /** Status-Objekt unter `name` speichern (best effort, nicht blockierend). */
-export async function persistState(name, state) {
+export async function persistState(p, name, state) {
   try {
-    await mkdir(STATE_DIR, { recursive: true });
-    await writeFile(resolve(STATE_DIR, `${name}.json`), JSON.stringify(state), 'utf8');
+    await mkdir(p.stateDir, { recursive: true });
+    await writeFile(resolve(p.stateDir, `${name}.json`), JSON.stringify(state), 'utf8');
   } catch {
     /* Persistenz ist optional */
   }
@@ -128,9 +128,9 @@ export async function persistState(name, state) {
  * Gespeicherten Status laden (synchron beim Modulstart). Ein beim Neustart
  * noch „laufender" Vorgang wird als Fehler markiert, damit kein Polling hängt.
  */
-export function restoreState(name, fallback) {
+export function restoreState(p, name, fallback) {
   try {
-    const s = JSON.parse(readFileSync(resolve(STATE_DIR, `${name}.json`), 'utf8'));
+    const s = JSON.parse(readFileSync(resolve(p.stateDir, `${name}.json`), 'utf8'));
     if (!s || typeof s !== 'object') return fallback;
     if (s.status === 'running') {
       s.status = 'error';

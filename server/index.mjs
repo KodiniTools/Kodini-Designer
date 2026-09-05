@@ -7,7 +7,7 @@ import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve, normalize, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config, profile, assertConfigured } from './config.mjs';
+import { config, profile, profiles, getProfile, assertConfigured } from './config.mjs';
 import { publicProfileInfo } from './profile.mjs';
 import {
   verifyPassword,
@@ -18,6 +18,9 @@ import {
   loginBlocked,
   recordLoginFailure,
   recordLoginSuccess,
+  readCookie,
+  PROFILE_COOKIE,
+  profileCookie,
 } from './auth.mjs';
 import { readJson, readBody, sendJson, sendText, clientIp, csrfOk } from './util.mjs';
 import { loadContent, saveContent } from './content.mjs';
@@ -25,7 +28,7 @@ import { saveUpload, listUploads, deleteUpload, moveUpload } from './uploads.mjs
 import { listFonts } from './fonts.mjs';
 import { listFontAwesome } from './fontawesome.mjs';
 import { startPublish, getPublishState } from './publish.mjs';
-import { startPreview, getPreviewState, PREVIEW_DIR } from './preview.mjs';
+import { startPreview, getPreviewState, previewDir } from './preview.mjs';
 import { serverCodeChanged } from './codeupdate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -55,6 +58,13 @@ const MIME = {
 
 function noindex(res) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+}
+
+// Aktives Site-Profil einer Anfrage: Profil-Cookie (Umschalter in der
+// Kopfzeile), sonst das Standard-Profil. Unbekannte Kennungen fallen auf den
+// Standard zurück (z. B. nach dem Entfernen eines Profils aus PROFILES).
+function activeProfile(req) {
+  return getProfile(decodeURIComponent(readCookie(req, PROFILE_COOKIE) || '')) || profile;
 }
 
 // --- Statische Auslieferung des Admin-Frontends (Phase 4) ---
@@ -99,7 +109,9 @@ async function servePreview(req, res, urlPath) {
     res.end('<p>Nicht angemeldet. Bitte zuerst im <a href="../">Designer</a> anmelden.</p>');
     return;
   }
-  // '/preview' oder '/preview/...' -> relativer Pfad innerhalb dist-preview/
+  // '/preview' oder '/preview/...' -> relativer Pfad innerhalb des Vorschau-
+  // Verzeichnisses des aktiven Profils.
+  const PREVIEW_DIR = previewDir(activeProfile(req));
   const sub = urlPath.slice('/preview'.length) || '/';
   const rel = normalize(decodeURIComponent(sub)).replace(/^(\.\.[/\\])+/, '');
   let filePath = resolve(PREVIEW_DIR, '.' + (rel === '/' ? '/index.html' : rel));
@@ -141,6 +153,7 @@ function requireCsrf(req, res) {
 
 async function handleApi(req, res, path) {
   const method = req.method;
+  const prof = activeProfile(req);
 
   // Login
   if (path === '/api/login' && method === 'POST') {
@@ -174,14 +187,35 @@ async function handleApi(req, res, path) {
     return sendJson(res, 200, {
       authenticated,
       serverCodeChanged: authenticated ? await serverCodeChanged() : false,
-      profile: publicProfileInfo(profile),
+      profile: publicProfileInfo(prof),
+      profiles: [...profiles.values()].map(publicProfileInfo),
     });
+  }
+
+  // Site-Profil wechseln (Umschalter in der Kopfzeile): setzt das Profil-Cookie.
+  if (path === '/api/profile' && method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    if (!requireCsrf(req, res)) return;
+    let body;
+    try {
+      body = await readJson(req);
+    } catch {
+      return sendJson(res, 400, { error: 'Ungültiger Body' });
+    }
+    const next = getProfile(body.id);
+    if (!next) return sendJson(res, 404, { error: 'Unbekanntes Profil' });
+    return sendJson(
+      res,
+      200,
+      { ok: true, profile: publicProfileInfo(next) },
+      { 'Set-Cookie': profileCookie(next.id) },
+    );
   }
 
   // Ab hier: Auth erforderlich
   if (path === '/api/content' && method === 'GET') {
     if (!requireAuth(req, res)) return;
-    const content = await loadContent();
+    const content = await loadContent(prof);
     return sendJson(res, 200, content);
   }
 
@@ -195,7 +229,7 @@ async function handleApi(req, res, path) {
       return sendJson(res, 400, { error: 'Ungültiger Body' });
     }
     try {
-      const saved = await saveContent(body);
+      const saved = await saveContent(body, prof);
       return sendJson(res, 200, { ok: true, saved });
     } catch (e) {
       return sendJson(res, 400, { error: e.message });
@@ -209,7 +243,7 @@ async function handleApi(req, res, path) {
     if (!filename) return sendJson(res, 400, { error: 'X-Filename-Header fehlt' });
     try {
       const buf = await readBody(req, config.maxUploadMb * 1024 * 1024);
-      const result = await saveUpload(buf, filename, req.headers['x-lang']);
+      const result = await saveUpload(prof, buf, filename, req.headers['x-lang']);
       return sendJson(res, 200, { ok: true, ...result });
     } catch (e) {
       return sendJson(res, e.statusCode || 500, { error: e.message });
@@ -219,19 +253,19 @@ async function handleApi(req, res, path) {
   // Server-Uploads getrennt nach Sprache auflisten: { de, en, shared }
   if (path === '/api/uploads' && method === 'GET') {
     if (!requireAuth(req, res)) return;
-    return sendJson(res, 200, await listUploads());
+    return sendJson(res, 200, await listUploads(prof));
   }
 
   // Verfügbare Schriftarten (aus dem Fonts-Ordner) für die Laufband-Schrift.
   if (path === '/api/fonts' && method === 'GET') {
     if (!requireAuth(req, res)) return;
-    return sendJson(res, 200, { fonts: await listFonts() });
+    return sendJson(res, 200, { fonts: await listFonts(prof) });
   }
 
   // Verfügbare Font-Awesome-Icons (SVG, je Kategorie) für den „Icons"-Tab.
   if (path === '/api/fontawesome' && method === 'GET') {
     if (!requireAuth(req, res)) return;
-    return sendJson(res, 200, { icons: await listFontAwesome() });
+    return sendJson(res, 200, { icons: await listFontAwesome(prof) });
   }
 
   // Eine Upload-Datei löschen (Webroot + Repo). Dauerhaft mit dem nächsten
@@ -246,7 +280,7 @@ async function handleApi(req, res, path) {
       return sendJson(res, 400, { error: 'Ungültiger Body' });
     }
     try {
-      const result = await deleteUpload(String(body.path || body.name || ''));
+      const result = await deleteUpload(prof, String(body.path || body.name || ''));
       return sendJson(res, 200, result);
     } catch (e) {
       return sendJson(res, e.statusCode || 500, { error: e.message });
@@ -264,7 +298,7 @@ async function handleApi(req, res, path) {
       return sendJson(res, 400, { error: 'Ungültiger Body' });
     }
     try {
-      const result = await moveUpload(String(body.path || ''), String(body.lang || ''));
+      const result = await moveUpload(prof, String(body.path || ''), String(body.lang || ''));
       return sendJson(res, 200, result);
     } catch (e) {
       return sendJson(res, e.statusCode || 500, { error: e.message });
@@ -274,7 +308,7 @@ async function handleApi(req, res, path) {
   if (path === '/api/publish' && method === 'POST') {
     if (!requireAuth(req, res)) return;
     if (!requireCsrf(req, res)) return;
-    if (getPreviewState().status === 'running') {
+    if (getPreviewState(prof).status === 'running') {
       return sendJson(res, 409, {
         error: 'Es läuft gerade ein Vorschau-Build. Bitte kurz warten.',
       });
@@ -285,33 +319,36 @@ async function handleApi(req, res, path) {
     } catch {
       /* optional */
     }
-    const result = startPublish(typeof body.message === 'string' ? body.message.slice(0, 100) : '');
+    const result = startPublish(
+      prof,
+      typeof body.message === 'string' ? body.message.slice(0, 100) : '',
+    );
     if (!result.ok) return sendJson(res, 409, { error: result.reason });
     return sendJson(res, 202, { ok: true });
   }
 
   if (path === '/api/publish/status' && method === 'GET') {
     if (!requireAuth(req, res)) return;
-    return sendJson(res, 200, getPublishState());
+    return sendJson(res, 200, getPublishState(prof));
   }
 
   // Vorschau-Build (baut Entwurf nach dist-preview/, ohne Deploy)
   if (path === '/api/preview' && method === 'POST') {
     if (!requireAuth(req, res)) return;
     if (!requireCsrf(req, res)) return;
-    if (getPublishState().status === 'running') {
+    if (getPublishState(prof).status === 'running') {
       return sendJson(res, 409, {
         error: 'Es läuft gerade eine Veröffentlichung. Bitte kurz warten.',
       });
     }
-    const result = startPreview();
+    const result = startPreview(prof);
     if (!result.ok) return sendJson(res, 409, { error: result.reason });
     return sendJson(res, 202, { ok: true });
   }
 
   if (path === '/api/preview/status' && method === 'GET') {
     if (!requireAuth(req, res)) return;
-    return sendJson(res, 200, getPreviewState());
+    return sendJson(res, 200, getPreviewState(prof));
   }
 
   return sendJson(res, 404, { error: 'Unbekannter Endpunkt' });
@@ -345,18 +382,20 @@ if (missing.length) {
 
 server.listen(config.port, config.host, () => {
   console.log(
-    `[kodini-designer] läuft auf http://${config.host}:${config.port} – Profil „${profile.name}“ (${profile.id}), Repo ${config.repoDir}`,
+    `[kodini-designer] läuft auf http://${config.host}:${config.port} – ${profiles.size} Profil(e), Standard „${profile.name}“ (${profile.id})`,
   );
-  // Effektives Upload-Verzeichnis loggen — Uploads MÜSSEN dort landen, wo nginx
-  // /uploads/ ausliefert (webroot/uploads). Liegt UPLOADS_DIR woanders, liefert
-  // die Seite 404 für alle Nutzer, obwohl der Upload „erfolgreich" war.
-  const expectedUploads = resolve(config.webroot, 'uploads');
-  console.log(`[kodini-designer] uploadsDir: ${config.uploadsDir}`);
-  if (resolve(config.uploadsDir) !== expectedUploads) {
-    console.warn(
-      `[kodini-designer] WARNUNG: uploadsDir (${config.uploadsDir}) != ${expectedUploads}. ` +
-        `Von nginx unter /uploads/ ausgelieferte Dateien werden nicht gefunden (404). ` +
-        `Setze UPLOADS_DIR=${expectedUploads} in /opt/kodini/.env und starte den Dienst neu.`,
+  for (const p of profiles.values()) {
+    console.log(
+      `[kodini-designer] Profil ${p.id}: Repo ${p.repo.dir}, uploadsDir ${p.uploads.dir}`,
     );
+    // Uploads MÜSSEN dort landen, wo nginx sie ausliefert (webroot + URL-Präfix).
+    // Liegt der Ordner woanders, liefert die Seite 404, obwohl der Upload „erfolgreich" war.
+    const expectedUploads = resolve(p.webroot, '.' + p.uploads.urlPrefix);
+    if (resolve(p.uploads.dir) !== expectedUploads) {
+      console.warn(
+        `[kodini-designer] WARNUNG (${p.id}): uploadsDir (${p.uploads.dir}) != ${expectedUploads}. ` +
+          `Von nginx unter ${p.uploads.urlPrefix}/ ausgelieferte Dateien werden nicht gefunden (404).`,
+      );
+    }
   }
 });

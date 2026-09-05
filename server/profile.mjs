@@ -3,7 +3,8 @@
 // Der Designer-Code selbst bleibt seitenunabhängig; alles Seitenspezifische
 // steht im Manifest profiles/<id>/profile.json.
 //
-// Auswahl:  PROFILE=<id>            (Ordnername unter profiles/, Default kodinitools-home)
+// Auswahl:  PROFILES=<id1>,<id2>    (mehrere Profile, Umschalter in der Kopfzeile)
+//     oder  PROFILE=<id>            (ein Profil; Ordnername unter profiles/, Default kodinitools-home)
 //     oder  PROFILE_FILE=/pfad/profile.json
 // Platzhalter in Pfaden: {repo} = Repo-Verzeichnis, {webroot} = Webroot.
 // Umgebungsvariablen (REPO_DIR, WEBROOT, UPLOADS_DIR, GIT_BRANCH, GIT_REMOTE,
@@ -199,21 +200,44 @@ export function resolveProfile(p, env = process.env) {
     },
     fonts: { ...p.fonts, dirs: p.fonts.dirs.map((d) => abs(d)) },
     fontawesome: { dirs: p.fontawesome.dirs.map((d) => abs(d)) },
+    // Gemeinsame Umgebungs-Ordner (STATE_DIR/PREVIEW_DIR) bekommen je Profil ein
+    // Unterverzeichnis, damit mehrere Profile in einem Dienst getrennt bleiben.
     preview: {
       ...p.preview,
       base: env.PREVIEW_BASE || p.preview.base,
-      outDir: env.PREVIEW_DIR ? resolve(env.PREVIEW_DIR) : abs(p.preview.outDir),
+      outDir: env.PREVIEW_DIR ? resolve(env.PREVIEW_DIR, p.id) : abs(p.preview.outDir),
     },
-    stateDir: env.STATE_DIR ? resolve(env.STATE_DIR) : abs(p.stateDir),
+    stateDir: env.STATE_DIR ? resolve(env.STATE_DIR, p.id) : abs(p.stateDir),
   };
 }
 
-/** Aktives Profil laut Umgebung laden (validiert + aufgelöst). */
+/**
+ * Alle aktiven Profile laut Umgebung (validiert + aufgelöst), in Reihenfolge der
+ * Angabe; das erste ist der Standard. PROFILE_FILE hat Vorrang (genau ein Profil),
+ * sonst PROFILES (Kommaliste) bzw. PROFILE/Default.
+ */
+export function loadActiveProfiles(env = process.env) {
+  let list;
+  if (env.PROFILE_FILE) {
+    list = [resolveProfile(loadProfileFile(resolve(env.PROFILE_FILE)), env)];
+  } else {
+    const ids = (env.PROFILES ? env.PROFILES.split(',') : [env.PROFILE || DEFAULT_PROFILE_ID])
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!ids.length) fail('PROFILES ist leer');
+    list = ids.map((id) => resolveProfile(loadProfileFile(profileFile(id)), env));
+  }
+  const map = new Map();
+  for (const p of list) {
+    if (map.has(p.id)) fail(`Profil „${p.id}“ ist doppelt angegeben`);
+    map.set(p.id, p);
+  }
+  return map;
+}
+
+/** Standard-Profil laut Umgebung (das erste aktive Profil). */
 export function loadActiveProfile(env = process.env) {
-  const file = env.PROFILE_FILE
-    ? resolve(env.PROFILE_FILE)
-    : profileFile(env.PROFILE || DEFAULT_PROFILE_ID);
-  return resolveProfile(loadProfileFile(file), env);
+  return loadActiveProfiles(env).values().next().value;
 }
 
 /** Für das Frontend: öffentliche, unkritische Profil-Infos (keine Pfade). */

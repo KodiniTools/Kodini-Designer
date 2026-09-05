@@ -97,16 +97,36 @@ export function clearCookie() {
   return parts.join('; ');
 }
 
-/** Liest den Session-Token aus dem Cookie-Header. */
-export function readSessionCookie(req) {
+/** Liest ein Cookie (Name) aus dem Cookie-Header oder ''. */
+export function readCookie(req, cookieName) {
   const raw = req.headers.cookie || '';
   for (const pair of raw.split(';')) {
     const i = pair.indexOf('=');
     if (i === -1) continue;
     const name = pair.slice(0, i).trim();
-    if (name === COOKIE_NAME) return pair.slice(i + 1).trim();
+    if (name === cookieName) return pair.slice(i + 1).trim();
   }
   return '';
+}
+
+/** Liest den Session-Token aus dem Cookie-Header. */
+export function readSessionCookie(req) {
+  return readCookie(req, COOKIE_NAME);
+}
+
+// Profil-Cookie: merkt sich das gewählte Site-Profil (Umschalter in der Kopfzeile).
+export const PROFILE_COOKIE = 'kodini_designer_profile';
+/** Set-Cookie-Header-Wert für die Profilwahl (1 Jahr, nur Kennung a-z0-9-). */
+export function profileCookie(id) {
+  const parts = [
+    `${PROFILE_COOKIE}=${encodeURIComponent(id)}`,
+    `Path=${config.cookiePath}`,
+    'HttpOnly',
+    'SameSite=Strict',
+    `Max-Age=${365 * 24 * 3600}`,
+  ];
+  if (config.isProd) parts.push('Secure');
+  return parts.join('; ');
 }
 
 /** True, wenn der Request eine gültige Session besitzt. */

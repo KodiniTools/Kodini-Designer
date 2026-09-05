@@ -3,7 +3,7 @@
 // einzelnen Bereiche liegen in eigenen Modulen (core/model/ticker/content/
 // media/publish) und werden hier verdrahtet.
 
-import { $, api, mediaAll } from './core.js';
+import { $, api, esc, toast, mediaAll } from './core.js';
 import { state, normTicker, normalizeMedia, SUBTABS, LANG_SECTIONS } from './model.js';
 import { renderTicker } from './ticker.js';
 import { loadFonts } from './fonts.js';
@@ -103,13 +103,41 @@ async function boot() {
     $('#appView').classList.add('hidden');
     return;
   }
-  // Aktives Site-Profil in der Kopfzeile anzeigen (welche Website bearbeitet wird).
+  // Aktives Site-Profil in der Kopfzeile anzeigen (welche Website bearbeitet
+  // wird). Bei mehreren Profilen: Umschalter statt Badge – der Wechsel setzt das
+  // Profil-Cookie und lädt die Oberfläche neu (ungespeicherte Änderungen werden
+  // vorher vom beforeunload-Schutz abgefragt).
   const prof = sess.data?.profile;
+  const list = Array.isArray(sess.data?.profiles) ? sess.data.profiles : [];
   const badge = $('#profileBadge');
-  if (badge && prof) {
-    badge.textContent = prof.name || prof.id || '';
-    badge.title = `Site-Profil „${prof.id}“ (${prof.kind})${prof.siteUrl ? ' – ' + prof.siteUrl : ''}`;
+  const sel = $('#profileSelect');
+  if (prof) {
     document.title = `Kodini Designer · ${prof.name || prof.id}`;
+    if (badge) {
+      badge.textContent = prof.name || prof.id || '';
+      badge.title = `Site-Profil „${prof.id}“ (${prof.kind})${prof.siteUrl ? ' – ' + prof.siteUrl : ''}`;
+      badge.classList.toggle('hidden', list.length > 1);
+    }
+    if (sel) {
+      sel.innerHTML = list
+        .map(
+          (p) =>
+            `<option value="${esc(p.id)}" ${p.id === prof.id ? 'selected' : ''}>${esc(p.name || p.id)}</option>`,
+        )
+        .join('');
+      sel.classList.toggle('hidden', list.length <= 1);
+      sel.onchange = async () => {
+        const id = sel.value;
+        if (id === prof.id) return;
+        const r = await api('/profile', { method: 'POST', body: { id } });
+        if (!r.ok) {
+          toast(r.data?.error || 'Profilwechsel fehlgeschlagen');
+          sel.value = prof.id;
+          return;
+        }
+        location.reload();
+      };
+    }
   }
   // Läuft der Dienst mit veraltetem Server-Code (nach einem Code-Update)?
   // Vorschau/Veröffentlichen starten ihn unter systemd automatisch neu.

@@ -1,9 +1,12 @@
 // Konfiguration des Designer-Dienstes. Seitenspezifisches (Repo, Content-
-// Dateien, Ordner, Befehle) kommt aus dem aktiven Site-Profil (profile.mjs);
+// Dateien, Ordner, Befehle) kommt aus den aktiven Site-Profilen (profile.mjs);
 // Secrets und Netzwerk aus der Umgebung (systemd EnvironmentFile=/opt/kodini/.env).
 // REPO_DIR/WEBROOT/UPLOADS_DIR/GIT_BRANCH/GIT_REMOTE überstimmen das Profil.
+//
+// Mehrere Profile (PROFILES=a,b) laufen in EINEM Dienst; welches Profil eine
+// Anfrage meint, entscheidet das Profil-Cookie (index.mjs → activeProfile).
 
-import { loadActiveProfile, DESIGNER_ROOT } from './profile.mjs';
+import { loadActiveProfiles, DESIGNER_ROOT } from './profile.mjs';
 
 function int(name, def) {
   const v = process.env[name];
@@ -11,8 +14,14 @@ function int(name, def) {
   return Number.isFinite(n) ? n : def;
 }
 
-/** Aktives Site-Profil (validiert, alle Pfade absolut). */
-export const profile = loadActiveProfile();
+/** Aktive Site-Profile (id -> Profil; validiert, alle Pfade absolut). */
+export const profiles = loadActiveProfiles();
+/** Standard-Profil (das erste aktive). */
+export const profile = profiles.values().next().value;
+/** Profil zu einer Kennung oder null. */
+export function getProfile(id) {
+  return profiles.get(String(id || '')) || null;
+}
 
 export const config = {
   host: process.env.BIND_HOST || '127.0.0.1',
@@ -27,14 +36,7 @@ export const config = {
   // Cookie-Pfad = nginx-Präfix des Dienstes (/admin bzw. /designer), lokal ggf. /.
   cookiePath: process.env.COOKIE_PATH || '/admin',
 
-  // Pfade (aus dem Profil, ggf. per Umgebung überstimmt)
-  repoDir: profile.repo.dir,
-  webroot: profile.webroot,
-  uploadsDir: profile.uploads.dir,
-
-  // Git
-  gitBranch: profile.repo.branch,
-  gitRemote: profile.repo.remote,
+  // Git-Autor für Veröffentlichungen (für alle Profile)
   gitAuthorName: process.env.GIT_AUTHOR_NAME || 'KodiniTools Admin',
   gitAuthorEmail: process.env.GIT_AUTHOR_EMAIL || 'admin@kodinitools.com',
 
@@ -49,13 +51,13 @@ export const config = {
 };
 
 /**
- * Pfade zu den vom Designer editierbaren Content-Dateien (aus dem Profil).
+ * Pfade zu den vom Designer editierbaren Content-Dateien eines Profils.
  * Schlüssel wie bisher (overridesDe, tickerDe, media, localesDe, …), damit
  * content.mjs unverändert bleibt.
  */
-export function contentPaths() {
-  const f = profile.content.files;
-  const l = profile.content.locales;
+export function contentPaths(p = profile) {
+  const f = p.content.files;
+  const l = p.content.locales;
   return {
     overridesDe: f.overridesDe,
     overridesEn: f.overridesEn,
@@ -64,7 +66,7 @@ export function contentPaths() {
     media: f.media,
     localesDe: l.de || '',
     localesEn: l.en || '',
-    base: profile.content.dir,
+    base: p.content.dir,
   };
 }
 

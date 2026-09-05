@@ -8,8 +8,9 @@ Frontend in Vanilla-JS (ES-Module).
 
 Der Designer ist aus `Kodinitools-Home/server/admin` herausgelöst. Welche
 Website er bearbeitet, bestimmt ein **Site-Profil** (`profiles/<id>/profile.json`).
-Erstes Profil: `kodinitools-home`. Weitere Websites (z. B. die Tool-Repos)
-werden später als eigene Profile angebunden – siehe [`profiles/README.md`](profiles/README.md).
+Mehrere Profile laufen in einem Dienst (`PROFILES=a,b`), der Umschalter sitzt in
+der Kopfzeile. Erstes Profil: `kodinitools-home`. Weitere Websites (z. B. die
+Tool-Repos) werden als eigene Profile angebunden – siehe [`profiles/README.md`](profiles/README.md).
 
 ## Aufbau
 
@@ -66,8 +67,10 @@ unverändert.
 
 ## Konfiguration
 
-Pflicht: `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`. Profil: `PROFILE` (Default
-`kodinitools-home`) oder `PROFILE_FILE`. Optional (überstimmen das Profil):
+Pflicht: `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`. Profile: `PROFILES` (Kommaliste,
+das erste ist Standard), `PROFILE` (eines, Default `kodinitools-home`) oder
+`PROFILE_FILE`. Optional (überstimmen das Profil; `STATE_DIR`/`PREVIEW_DIR` bekommen
+je Profil einen Unterordner):
 `REPO_DIR`, `WEBROOT`, `UPLOADS_DIR`, `GIT_BRANCH`, `GIT_REMOTE`, `STATE_DIR`,
 `PREVIEW_BASE`, `PREVIEW_DIR`. Weitere:
 `PORT`, `BIND_HOST`, `COOKIE_PATH`, `MAX_UPLOAD_MB`, `SESSION_TTL_HOURS`,
@@ -76,17 +79,18 @@ Pflicht: `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`. Profil: `PROFILE` (Default
 
 ## API
 
-| Methode    | Pfad                                             | Auth | Zweck                                                                                                               |
-| ---------- | ------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------- |
-| POST       | `/api/login`, `/api/logout`                      | –    | Anmelden / Abmelden                                                                                                 |
-| GET        | `/api/session`                                   | –    | `{ authenticated, serverCodeChanged, profile }` (`profile` = id, name, kind, siteUrl, languages, tabs, previewBase) |
-| GET / PUT  | `/api/content`                                   | ✓    | Content laden / validiert speichern                                                                                 |
-| POST       | `/api/upload`                                    | ✓    | Datei hochladen (Raw-Body, `X-Filename`, `X-Lang`)                                                                  |
-| GET        | `/api/uploads`, `/api/fonts`, `/api/fontawesome` | ✓    | Listen                                                                                                              |
-| POST       | `/api/uploads/delete`, `/api/uploads/move`       | ✓    | Upload löschen / verschieben                                                                                        |
-| POST / GET | `/api/preview`, `/api/preview/status`            | ✓    | Vorschau bauen / Status                                                                                             |
-| POST / GET | `/api/publish`, `/api/publish/status`            | ✓    | Veröffentlichen / Status                                                                                            |
-| GET        | `/preview/…`                                     | ✓    | Ausgelieferte Vorschau                                                                                              |
+| Methode    | Pfad                                             | Auth | Zweck                                                                                                                                                  |
+| ---------- | ------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| POST       | `/api/login`, `/api/logout`                      | –    | Anmelden / Abmelden                                                                                                                                    |
+| POST       | `/api/profile`                                   | ✓    | Site-Profil wechseln (`{ id }`, setzt das Profil-Cookie)                                                                                               |
+| GET        | `/api/session`                                   | –    | `{ authenticated, serverCodeChanged, profile }` (`profile` = aktives Profil: id, name, kind, siteUrl, languages, tabs, previewBase; `profiles` = alle) |
+| GET / PUT  | `/api/content`                                   | ✓    | Content laden / validiert speichern                                                                                                                    |
+| POST       | `/api/upload`                                    | ✓    | Datei hochladen (Raw-Body, `X-Filename`, `X-Lang`)                                                                                                     |
+| GET        | `/api/uploads`, `/api/fonts`, `/api/fontawesome` | ✓    | Listen                                                                                                                                                 |
+| POST       | `/api/uploads/delete`, `/api/uploads/move`       | ✓    | Upload löschen / verschieben                                                                                                                           |
+| POST / GET | `/api/preview`, `/api/preview/status`            | ✓    | Vorschau bauen / Status                                                                                                                                |
+| POST / GET | `/api/publish`, `/api/publish/status`            | ✓    | Veröffentlichen / Status                                                                                                                               |
+| GET        | `/preview/…`                                     | ✓    | Ausgelieferte Vorschau                                                                                                                                 |
 
 Schreibende Aufrufe verlangen den Header `x-kodini-admin: 1` (CSRF-Schutz).
 
@@ -96,6 +100,9 @@ Schreibende Aufrufe verlangen den Header `x-kodini-admin: 1` (CSRF-Schutz).
   identisch zum eingebetteten Admin (gleiche Testsuite, gleiche Ergebnisse).
 - **Noch seitenspezifisch:** das Frontend (feste Tabs, Feldnamen wie
   `tools.audioCutter`, Sektionen Audio/Bild/Diverse, URL-Präfix `/uploads`).
-- **Nächste Schritte:** manifestgesteuerte Tabs/Felder je Profil, Live-Vorschau
-  der echten Website im iframe (postMessage statt nachgebauter Komponenten),
-  globales Marken-Theme über mehrere Profile, Profil-Umschalter im Kopf.
+- **Profil-Umschalter:** mehrere Profile je Dienst, Wahl pro Browser (Cookie),
+  Status/Vorschau/Uploads je Profil getrennt. Der Medien-Zwischenspeicher im
+  Browser (IndexedDB) ist profilübergreifend.
+- **Nächste Schritte:** Vorlagen-Repo für leere Seiten, manifestgesteuerte
+  Tabs/Felder je Profil, Live-Vorschau der echten Website im iframe (postMessage
+  statt nachgebauter Komponenten), globales Marken-Theme über mehrere Profile.
