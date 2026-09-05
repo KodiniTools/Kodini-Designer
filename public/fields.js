@@ -7,11 +7,12 @@
 //              CSS-Variable -> Feldpfad (Farben der App)
 // Werte kommen aus der im Profil genannten JSON-Datei; leer = Standard der App.
 
-import { $, esc, toast } from './core.js';
+import { $, esc, toast, fmtBytes } from './core.js';
 import { state } from './model.js';
 import { slider, bindSliders } from './slider.js';
 import { colorPicker, bindColorPickers } from './color.js';
 import { fontOptionsHtml, ensureFontFace } from './fonts.js';
+import { objUrl, openMediaPicker, stageFile } from './media.js';
 
 const HEX6 = /^#[0-9a-fA-F]{6}$/;
 const HEX3 = /^#[0-9a-fA-F]{3}$/;
@@ -78,7 +79,15 @@ function slotInlineStyle(slot, theme) {
   return p.join(';');
 }
 
+// Bild-URL für die Vorschau (staged:<id> -> Objekt-URL des Browsers).
+function imageUrl(v) {
+  if (typeof v !== 'string' || !v) return '';
+  return v.startsWith('staged:') ? objUrl(v.slice(7)) : v;
+}
+
 // --- Vorschau ---
+// CSS-Variablen der Vorschau aus den Feldwerten; „kind“ der Variable bestimmt
+// die Übersetzung (color | image | number | raw), leer = Platzhalter des Felds.
 function previewVars(theme) {
   const vars = g()?.preview?.vars || {};
   const defaults = {};
@@ -88,7 +97,26 @@ function previewVars(theme) {
   for (const [name, m] of Object.entries(vars)) {
     const path = m.path || (theme === 'dark' ? m.dark : m.light) || m.light || m.dark;
     if (!path) continue;
-    const v = toHex6(val(path)) || toHex6(defaults[path] || '');
+    const raw = val(path);
+    const cur = raw === '' || raw === undefined || raw === null ? defaults[path] || '' : raw;
+    let v = '';
+    switch (m.kind || 'color') {
+      case 'image': {
+        const u = imageUrl(cur);
+        v = u ? `url("${u.replace(/["\\]/g, '')}")` : 'none';
+        break;
+      }
+      case 'number': {
+        const n = Number(cur);
+        if (Number.isFinite(n)) v = `${n}${m.unit || ''}`;
+        break;
+      }
+      case 'raw':
+        v = String(cur).replace(/[;{}]/g, '');
+        break;
+      default:
+        v = toHex6(cur) || '';
+    }
     if (v) out.push(`${name}:${v}`);
   }
   return out.join(';');
@@ -184,11 +212,46 @@ function fieldHtml(f) {
       return `<div style="flex:0 0 auto">${label}${withReset(`<select data-fld="${esc(f.path)}" style="width:auto;height:38px"><option value="">Standard${f.placeholder ? ` (${esc(f.placeholder)})` : ''}</option>${f.options.map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`, f.path)}${hint}</div>`;
     case 'font':
       return `<div style="flex:1 1 220px">${label}${withReset(`<select data-fld="${esc(f.path)}" data-fldtype="font" style="${v ? `font-family:'${ensureFontFace(v)}', system-ui, sans-serif` : ''}">${fontOptionsHtml(v)}</select>`, f.path)}${hint}</div>`;
+    case 'image':
+      return imageField(f, v);
     case 'toggle':
       return `<div style="flex:0 0 auto"><label style="display:flex;align-items:center;gap:.4rem;margin:0;cursor:pointer;height:38px"><input type="checkbox" data-fld="${esc(f.path)}" data-fldtype="toggle" ${v === true ? 'checked' : ''} style="width:auto" /> ${esc(f.label)}</label>${hint}</div>`;
     default:
       return `<div style="flex:1 1 320px">${label}${withReset(`<input type="text" data-fld="${esc(f.path)}" value="${esc(v)}" maxlength="${f.maxLength}" placeholder="${esc(f.placeholder || '')}" style="flex:1 1 auto" />`, f.path)}${hint}</div>`;
   }
+}
+
+// Bildfeld: Vorschaukachel, Mediathek/Datei/Zwischenablage, URL-Eingabe,
+// „Entfernen“ (= Standard). Lokale Dateien werden als 'staged:<id>' gehalten und
+// beim Speichern hochgeladen (publish.js: uploadStagedFields).
+function imageField(f, v) {
+  const staged = typeof v === 'string' && v.startsWith('staged:');
+  const item = staged ? state.stagedItems.find((x) => x.id === v.slice(7)) : null;
+  const url = imageUrl(v);
+  const thumb = url
+    ? `<img src="${esc(url)}" alt="" />`
+    : '<span class="hint" style="margin:0;font-size:.72rem">kein Bild</span>';
+  const status = staged
+    ? `<p class="hint" style="margin:.25rem 0 0">Lokal: ${esc(item ? `${item.name}${item.blob ? ` · ${fmtBytes(item.blob.size)}` : ''}` : 'Medium nicht gefunden')} – wird beim Speichern hochgeladen</p>`
+    : '';
+  const hint = f.hint ? `<p class="hint" style="margin:.25rem 0 0">${esc(f.hint)}</p>` : '';
+  return `<div style="flex:1 1 100%" data-fldimage="${esc(f.path)}">
+    <label>${esc(f.label)}${defMark(f.path, isSet(v))}</label>
+    <div class="row" style="align-items:flex-start;margin:0">
+      <div class="bg-thumb" data-fldimgthumb="${esc(f.path)}">${thumb}</div>
+      <div style="flex:1 1 260px">
+        <div class="row" style="margin:0">
+          <button type="button" data-fldimgpick="${esc(f.path)}" style="flex:0 0 auto">📂 Aus Mediathek wählen</button>
+          <button type="button" data-fldimgfilebtn="${esc(f.path)}" style="flex:0 0 auto">⬆️ Datei wählen</button>
+          <input type="file" accept="image/*" data-fldimgfile="${esc(f.path)}" style="display:none" />
+          <button type="button" class="danger" data-fldreset="${esc(f.path)}" ${isSet(v) ? '' : 'disabled'} style="flex:0 0 auto">Entfernen</button>
+        </div>
+        <label style="margin-top:.5rem">Bild-URL <span class="hint" style="margin:0">(z.B. /uploads/… oder https://…; Bild aus der Zwischenablage hier einfügen)</span></label>
+        <input type="text" data-fld="${esc(f.path)}" data-fldtype="image" value="${esc(staged ? '' : v)}" placeholder="${staged ? 'Lokales Medium (wird beim Speichern hochgeladen)' : '/uploads/…'}" />
+        ${status}${hint}
+      </div>
+    </div>
+  </div>`;
 }
 
 // Karte eines Text-Slots: Text je Sprache + Design (Schrift, Größe, Gewicht,
@@ -276,9 +339,12 @@ export function renderFields() {
   pane.querySelectorAll('[data-fld]').forEach((el) => {
     const path = el.dataset.fld;
     const type = el.dataset.fldtype || (el.tagName === 'SELECT' ? 'select' : 'text');
-    const ev = el.tagName === 'SELECT' ? 'change' : 'input';
+    const ev = el.tagName === 'SELECT' || type === 'image' ? 'change' : 'input';
     el.addEventListener(ev, () => {
-      if (type === 'toggle') setVal(path, el.checked);
+      if (type === 'image') {
+        setVal(path, el.value.trim());
+        renderFields();
+      } else if (type === 'toggle') setVal(path, el.checked);
       else if (type === 'number') setVal(path, String(el.value));
       else if (type === 'color') setVal(path, el.value.toLowerCase());
       else if (type === 'font') {
@@ -301,6 +367,53 @@ export function renderFields() {
         setVal(path, (nat && nat.value.toLowerCase()) || '#000000');
       } else setVal(path, '');
       renderFields();
+    });
+  });
+  // Bildfelder: Mediathek, Datei-Dialog, Zwischenablage (Einfügen im URL-Feld).
+  const setImage = (path, value, msg) => {
+    setVal(path, value);
+    renderFields();
+    if (msg) toast(msg);
+  };
+  pane.querySelectorAll('[data-fldimgpick]').forEach((btn) => {
+    const path = btn.dataset.fldimgpick;
+    btn.addEventListener('click', () =>
+      openMediaPicker('de', 'fld:' + path, {
+        imagesOnly: true,
+        allLangs: true,
+        title: 'Bild wählen',
+        onPick: (url) => setImage(path, url, 'Bild übernommen'),
+      }),
+    );
+  });
+  pane.querySelectorAll('[data-fldimgfilebtn]').forEach((btn) => {
+    const path = btn.dataset.fldimgfilebtn;
+    btn.addEventListener('click', () =>
+      pane.querySelector(`[data-fldimgfile="${CSS.escape(path)}"]`)?.click(),
+    );
+  });
+  pane.querySelectorAll('[data-fldimgfile]').forEach((inp) => {
+    const path = inp.dataset.fldimgfile;
+    inp.addEventListener('change', async () => {
+      const file = inp.files && inp.files[0];
+      if (!file) return;
+      if (!/^image\//.test(file.type)) return toast('Bitte eine Bilddatei wählen');
+      const id = await stageFile(file);
+      setImage(path, 'staged:' + id, `${file.name} übernommen (lokal)`);
+    });
+  });
+  pane.querySelectorAll('[data-fldimage] [data-fldtype="image"]').forEach((inp) => {
+    const path = inp.closest('[data-fldimage]').dataset.fldimage;
+    inp.addEventListener('paste', async (e) => {
+      const f = Array.from(e.clipboardData?.files || []).find((x) => /^image\//.test(x.type));
+      if (!f) return;
+      e.preventDefault();
+      const ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+      const id = await stageFile(
+        f,
+        f.name && f.name !== 'image.png' ? f.name : `zwischenablage-${Date.now()}.${ext}`,
+      );
+      setImage(path, 'staged:' + id, 'Bild aus der Zwischenablage übernommen (lokal)');
     });
   });
   pane.querySelectorAll('[data-fldreset]').forEach((btn) => {

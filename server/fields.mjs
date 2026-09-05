@@ -8,6 +8,8 @@ import { resolve } from 'node:path';
 import { flatFields } from './profile.mjs';
 
 const FONT_FILE = /^[a-zA-Z0-9][a-zA-Z0-9._ -]*\.(woff2|woff|ttf|otf)$/i;
+// Bild-URL: absoluter Pfad (z. B. /uploads/bg.webp) oder http(s)-URL, ohne Anführungs-/Klammerzeichen.
+const IMAGE_URL = /^(\/[^\s"'()\\]*|https?:\/\/[^\s"'()\\]+)$/;
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
@@ -92,6 +94,11 @@ export function normalizeFieldValue(f, raw) {
       return s;
     case 'font':
       if (!FONT_FILE.test(s)) throw new Error(`${f.label}: keine gültige Schriftdatei`);
+      return s;
+    case 'image':
+      if (s.startsWith('staged:'))
+        throw new Error(`${f.label}: lokales Medium noch nicht hochgeladen`);
+      if (!IMAGE_URL.test(s)) throw new Error(`${f.label}: keine gültige Bild-URL`);
       return s;
     default:
       throw new Error(`${f.label}: unbekannter Feldtyp`);
