@@ -401,7 +401,7 @@ export function loadProfileFile(file) {
  *    gelten nur, wenn siteEnv true ist – d. h. für das ERSTE (Standard-)Profil,
  *    damit die gemeinsame .env von kodini-admin weiter passt, ohne dass sie
  *    jedes weitere Profil auf dasselbe Repo umbiegt.
- *  - dienstbezogen (STATE_DIR, PREVIEW_DIR, PREVIEW_BASE): gelten für alle Profile.
+ *  - dienstbezogen (STATE_DIR, PREVIEW_DIR, PREVIEW_BASE, FONTS_DIR): gelten für alle Profile.
  */
 export function resolveProfile(p, env = process.env, { siteEnv = true } = {}) {
   const site = siteEnv ? env : {};
@@ -431,7 +431,19 @@ export function resolveProfile(p, env = process.env, { siteEnv = true } = {}) {
       dir: resolve(site.UPLOADS_DIR || abs(p.uploads.dir)),
       repoDir: p.uploads.repoDir ? abs(p.uploads.repoDir) : '',
     },
-    fonts: { ...p.fonts, dirs: p.fonts.dirs.map((d) => abs(d)) },
+    // Schriften: Ordner des Profils + dienstweit FONTS_DIR (Kommaliste, z. B. der
+    // zentrale Ordner /var/www/kodinitools.com/fonts) – für alle Profile.
+    fonts: {
+      ...p.fonts,
+      dirs: [
+        ...p.fonts.dirs.map((d) => abs(d)),
+        ...String(env.FONTS_DIR || '')
+          .split(',')
+          .map((d) => d.trim())
+          .filter(Boolean)
+          .map((d) => resolve(d)),
+      ].filter((d, i, arr) => arr.indexOf(d) === i),
+    },
     fontawesome: { dirs: p.fontawesome.dirs.map((d) => abs(d)) },
     // Gemeinsame Umgebungs-Ordner (STATE_DIR/PREVIEW_DIR) bekommen je Profil ein
     // Unterverzeichnis, damit mehrere Profile in einem Dienst getrennt bleiben.

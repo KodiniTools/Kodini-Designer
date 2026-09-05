@@ -73,7 +73,7 @@ das erste ist Standard), `PROFILE` (eines, Default `kodinitools-home`) oder
 `PROFILE_FILE`. Optional (überstimmen das Profil; `STATE_DIR`/`PREVIEW_DIR` bekommen
 je Profil einen Unterordner):
 `REPO_DIR`, `WEBROOT`, `UPLOADS_DIR`, `GIT_BRANCH`, `GIT_REMOTE`, `STATE_DIR`,
-`PREVIEW_BASE`, `PREVIEW_DIR`. Weitere:
+`PREVIEW_BASE`, `PREVIEW_DIR`, `FONTS_DIR` (zentraler Schriftordner für alle Profile). Weitere:
 `PORT`, `BIND_HOST`, `COOKIE_PATH`, `MAX_UPLOAD_MB`, `SESSION_TTL_HOURS`,
 `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`. Vorlagen: `deploy/.env.example`,
 `deploy/designer.env.example`.
