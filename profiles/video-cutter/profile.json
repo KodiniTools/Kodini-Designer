@@ -5,23 +5,38 @@
   "kind": "vite-spa",
   "siteUrl": "https://kodinitools.com/video-cutter/",
   "languages": ["de", "en"],
-  "repo": { "dir": "/opt/kodini/sites/video-cutter", "branch": "main", "remote": "origin" },
+  "repo": {
+    "dir": "/opt/kodini/sites/video-cutter",
+    "branch": "main",
+    "remote": "origin"
+  },
   "webroot": "/var/www/kodinitools.com",
   "content": {
     "dir": "src/content",
-    "files": { "site": "site.json" },
+    "files": {
+      "site": "site.json"
+    },
     "commitPaths": ["src/content/site.json"]
   },
-  "uploads": { "dir": "{webroot}/uploads", "urlPrefix": "/uploads" },
+  "uploads": {
+    "dir": "{webroot}/uploads",
+    "urlPrefix": "/uploads"
+  },
   "build": {
     "command": ["npm", "run", "build"],
-    "env": { "VITE_API_BASE": "/video-cutter", "VITE_FFMPEG_CORE_URL": "/video-cutter/ffmpeg" },
+    "env": {
+      "VITE_API_BASE": "/video-cutter",
+      "VITE_FFMPEG_CORE_URL": "/video-cutter/ffmpeg"
+    },
     "timeoutMinutes": 15
   },
   "preview": {
     "base": "/designer/preview/",
     "outDir": "dist-preview",
-    "env": { "base": "VITE_BASE", "outDir": "VITE_OUT_DIR" }
+    "env": {
+      "base": "VITE_BASE",
+      "outDir": "VITE_OUT_DIR"
+    }
   },
   "deploy": {
     "command": ["bash", "deploy/deploy.sh"],
@@ -32,10 +47,94 @@
     },
     "timeoutMinutes": 20
   },
-  "codeUpdate": { "enabled": true },
+  "codeUpdate": {
+    "enabled": true
+  },
   "tabs": ["fields"],
   "fields": {
     "file": "site",
+    "langs": ["de", "en"],
+    "preview": {
+      "file": "preview.html",
+      "vars": {
+        "--vc-accent": "theme.accent",
+        "--vc-playhead": "theme.playhead",
+        "--vc-bg": {
+          "light": "theme.light.bg",
+          "dark": "theme.dark.bg"
+        },
+        "--vc-surface": {
+          "light": "theme.light.surface",
+          "dark": "theme.dark.surface"
+        },
+        "--vc-text": {
+          "light": "theme.light.text",
+          "dark": "theme.dark.text"
+        }
+      }
+    },
+    "slots": [
+      {
+        "key": "app.title",
+        "label": "Titel der App",
+        "type": "text",
+        "textPath": "texts.{lang}.app.title",
+        "stylePath": "styles.app.title",
+        "placeholder": {
+          "de": "Video schneiden",
+          "en": "Cut video"
+        },
+        "defaultSize": 20
+      },
+      {
+        "key": "app.subtitle",
+        "label": "Untertitel",
+        "type": "text",
+        "textPath": "texts.{lang}.app.subtitle",
+        "stylePath": "styles.app.subtitle",
+        "placeholder": {
+          "de": "Videos schnell und einfach schneiden.",
+          "en": "Cut videos quickly and easily."
+        },
+        "defaultSize": 13
+      },
+      {
+        "key": "drop.title",
+        "label": "Ablagefläche – Titel",
+        "type": "text",
+        "textPath": "texts.{lang}.drop.title",
+        "stylePath": "styles.drop.title",
+        "placeholder": {
+          "de": "Video hierher ziehen oder klicken",
+          "en": "Drop a video here or click"
+        },
+        "defaultSize": 16
+      },
+      {
+        "key": "drop.hint",
+        "label": "Ablagefläche – Hinweis",
+        "type": "textarea",
+        "textPath": "texts.{lang}.drop.hint",
+        "stylePath": "styles.drop.hint",
+        "placeholder": {
+          "de": "MP4, WebM, MOV … Die Datei wird zum Schneiden auf den Server geladen.",
+          "en": "MP4, WebM, MOV … The file is uploaded to the server for cutting."
+        },
+        "defaultSize": 14
+      },
+      {
+        "key": "footer",
+        "label": "Fußzeile",
+        "type": "text",
+        "textPath": "texts.{lang}.footer",
+        "stylePath": "styles.footer",
+        "placeholder": {
+          "de": "Serverseitige Verarbeitung mit FFmpeg.",
+          "en": "Server-side processing with FFmpeg."
+        },
+        "defaultSize": 12
+      }
+    ],
     "groups": [
       {
         "title": "Seite (Titel & Meta)",
@@ -55,82 +154,12 @@
         ]
       },
       {
-        "title": "Texte Deutsch",
-        "fields": [
-          {
-            "path": "texts.de.app.title",
-            "type": "text",
-            "label": "Titel der App",
-            "placeholder": "Video schneiden"
-          },
-          {
-            "path": "texts.de.app.subtitle",
-            "type": "text",
-            "label": "Untertitel",
-            "placeholder": "Videos schnell und einfach schneiden."
-          },
-          {
-            "path": "texts.de.drop.title",
-            "type": "text",
-            "label": "Ablagefläche – Titel",
-            "placeholder": "Video hierher ziehen oder klicken"
-          },
-          {
-            "path": "texts.de.drop.hint",
-            "type": "textarea",
-            "label": "Ablagefläche – Hinweis",
-            "placeholder": "MP4, WebM, MOV … Die Datei wird zum Schneiden auf den Server geladen."
-          },
-          {
-            "path": "texts.de.footer",
-            "type": "text",
-            "label": "Fußzeile",
-            "placeholder": "Serverseitige Verarbeitung mit FFmpeg."
-          }
-        ]
-      },
-      {
-        "title": "Texte English",
-        "fields": [
-          {
-            "path": "texts.en.app.title",
-            "type": "text",
-            "label": "App title",
-            "placeholder": "Cut video"
-          },
-          {
-            "path": "texts.en.app.subtitle",
-            "type": "text",
-            "label": "Subtitle",
-            "placeholder": "Cut videos quickly and easily."
-          },
-          {
-            "path": "texts.en.drop.title",
-            "type": "text",
-            "label": "Drop zone – title",
-            "placeholder": "Drop a video here or click"
-          },
-          {
-            "path": "texts.en.drop.hint",
-            "type": "textarea",
-            "label": "Drop zone – hint",
-            "placeholder": "MP4, WebM, MOV … The file is uploaded to the server for cutting."
-          },
-          {
-            "path": "texts.en.footer",
-            "type": "text",
-            "label": "Footer",
-            "placeholder": "Server-side processing with FFmpeg."
-          }
-        ]
-      },
-      {
-        "title": "Farben",
+        "title": "Farben der App",
         "fields": [
           {
             "path": "theme.accent",
             "type": "color",
-            "label": "Akzentfarbe (Buttons, Auswahl)",
+            "label": "Akzentfarbe (Logo, Buttons, Auswahl)",
             "placeholder": "#4f8cff"
           },
           {

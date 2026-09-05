@@ -4,7 +4,10 @@
 // erhalten. Leerer String = Standard der Website (Konvention der Content-Schicht).
 
 import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { flatFields } from './profile.mjs';
+
+const FONT_FILE = /^[a-zA-Z0-9][a-zA-Z0-9._ -]*\.(woff2|woff|ttf|otf)$/i;
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
@@ -81,13 +84,27 @@ export function normalizeFieldValue(f, raw) {
       const n = Number(s);
       if (!Number.isFinite(n) || n < f.min || n > f.max)
         throw new Error(`${f.label}: Zahl zwischen ${f.min} und ${f.max}`);
-      return String(n);
+      // Als Zahl speichern (Websites prüfen typeof number); leer bleibt ''.
+      return n;
     }
     case 'select':
       if (!f.options.includes(s)) throw new Error(`${f.label}: unbekannte Auswahl`);
       return s;
+    case 'font':
+      if (!FONT_FILE.test(s)) throw new Error(`${f.label}: keine gültige Schriftdatei`);
+      return s;
     default:
       throw new Error(`${f.label}: unbekannter Feldtyp`);
+  }
+}
+
+/** Vorschau-Vorlage (HTML) des Profils oder '' (Datei liegt im Profilordner). */
+export async function readPreviewTemplate(p) {
+  if (!p.fields?.preview || !p.dir) return '';
+  try {
+    return await readFile(resolve(p.dir, p.fields.preview.file), 'utf8');
+  } catch {
+    return '';
   }
 }
 

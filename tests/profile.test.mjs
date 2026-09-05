@@ -194,9 +194,11 @@ test('publicProfileInfo enthält keine Server-Pfade', () => {
     'name',
     'previewBase',
     'siteUrl',
+    'slots',
     'tabs',
   ]);
   assert.equal(info.contentTabs, true);
   assert.equal(info.fields, null);
+  assert.equal(info.slots, null);
   assert.ok(!JSON.stringify(info).includes('/opt/'));
 });

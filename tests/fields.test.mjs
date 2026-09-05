@@ -17,6 +17,7 @@ import {
   validateFieldValues,
   loadFields,
   saveFields,
+  readPreviewTemplate,
   getPath,
   setPath,
 } from '../server/fields.mjs';
@@ -26,13 +27,27 @@ const VC = loadProfileFile(profileFile('video-cutter'));
 test('video-cutter: Manifest mit Feldern lädt, ohne media-Datei', () => {
   assert.equal(VC.kind, 'vite-spa');
   assert.equal(VC.fields.file, 'site');
-  assert.equal(VC.fields.groups.length, 4);
-  assert.ok(flatFields(VC.fields).length >= 18);
+  assert.equal(VC.fields.groups.length, 2);
+  assert.equal(VC.fields.slots.length, 5);
+  assert.deepEqual(VC.fields.langs, ['de', 'en']);
+  assert.equal(VC.fields.preview.file, 'preview.html');
+  assert.deepEqual(VC.fields.preview.vars['--vc-bg'], {
+    path: '',
+    light: 'theme.light.bg',
+    dark: 'theme.dark.bg',
+  });
+  // 5 Slots × (2 Texte + 7 Design) + 10 Gruppenfelder
+  assert.equal(flatFields(VC.fields).length, 5 * 9 + 10);
+  const paths = flatFields(VC.fields).map((f) => f.path);
+  assert.ok(paths.includes('texts.de.app.title') && paths.includes('styles.app.title.colorDark'));
+  assert.equal(flatFields(VC.fields).find((f) => f.path === 'styles.app.title.font').type, 'font');
+  assert.ok(VC.dir.endsWith('/profiles/video-cutter'));
   assert.equal(VC.content.files.media, undefined);
   assert.deepEqual(VC.deploy.env.SKIP_API, '1');
   const info = publicProfileInfo(resolveProfile(VC, {}));
   assert.equal(info.contentTabs, false);
-  assert.equal(info.fields.length, 4);
+  assert.equal(info.fields.length, 2);
+  assert.deepEqual(info.slots, ['app.title', 'app.subtitle', 'drop.title', 'drop.hint', 'footer']);
   assert.equal(
     publicProfileInfo(resolveProfile(loadProfileFile(profileFile('kodinitools-home')), {}))
       .contentTabs,
@@ -44,7 +59,47 @@ test('validateProfile: Feld-Manifest wird geprüft', () => {
   const base = JSON.parse(JSON.stringify(VC));
   const withFields = (fields) => validateProfile({ ...base, fields });
   assert.throws(() => withFields({ file: 'nope', groups: [] }), /nicht in content.files/);
-  assert.throws(() => withFields({ file: 'site', groups: [] }), /groups fehlt/);
+  assert.throws(() => withFields({ file: 'site', groups: [] }), /groups oder fields.slots fehlt/);
+  // Slots
+  const slot = (extra) => ({
+    key: 'a.b',
+    label: 'A',
+    textPath: 'texts.{lang}.a.b',
+    stylePath: 'styles.a.b',
+    ...extra,
+  });
+  assert.throws(
+    () => withFields({ file: 'site', slots: [slot({ textPath: 'texts.a.b' })] }),
+    /\{lang\}/,
+  );
+  assert.throws(
+    () => withFields({ file: 'site', slots: [slot({ type: 'color' })] }),
+    /text oder textarea/,
+  );
+  assert.throws(() => withFields({ file: 'site', slots: [slot({}), slot({})] }), /doppelt/);
+  assert.throws(
+    () => withFields({ file: 'site', slots: [slot({})], preview: { file: '../x.html' } }),
+    /nur Dateiname/,
+  );
+  assert.throws(
+    () =>
+      withFields({
+        file: 'site',
+        slots: [slot({})],
+        preview: { file: 'p.html', vars: { color: 'x' } },
+      }),
+    /keine CSS-Variable/,
+  );
+  const withSlot = withFields({
+    file: 'site',
+    slots: [slot({ placeholder: 'Hallo', defaultSize: 18 })],
+    preview: { file: 'p.html', vars: { '--x': 'theme.x', '--y': { light: 'l', dark: 'd' } } },
+  });
+  assert.deepEqual(withSlot.fields.slots[0].placeholder, { de: 'Hallo', en: 'Hallo' });
+  assert.equal(withSlot.fields.slots[0].defaultSize, 18);
+  assert.equal(withSlot.fields.groups.length, 0);
+  assert.deepEqual(withSlot.fields.preview.vars['--x'], { path: 'theme.x', light: '', dark: '' });
+  assert.equal(flatFields(withSlot.fields).length, 9);
   assert.throws(
     () =>
       withFields({ file: 'site', groups: [{ title: 'x', fields: [{ path: 'a b', label: 'A' }] }] }),
@@ -122,7 +177,10 @@ test('normalizeFieldValue: Typen, Grenzen, leer = Standard', () => {
   assert.equal(normalizeFieldValue(f('color'), '#ABCDEF'), '#abcdef');
   assert.equal(normalizeFieldValue(f('color'), '#abc'), '#abc');
   assert.throws(() => normalizeFieldValue(f('color'), 'rot'), /Hex/);
-  assert.equal(normalizeFieldValue(f('number'), '7'), '7');
+  assert.equal(normalizeFieldValue(f('number'), '7'), 7);
+  assert.equal(normalizeFieldValue(f('number'), '1.5'), 1.5);
+  assert.equal(normalizeFieldValue(f('font'), 'Supreme-Bold.woff2'), 'Supreme-Bold.woff2');
+  assert.throws(() => normalizeFieldValue(f('font'), '../x.woff2'), /Schriftdatei/);
   assert.throws(() => normalizeFieldValue(f('number'), '11'), /zwischen/);
   assert.equal(normalizeFieldValue(f('select'), 'a'), 'a');
   assert.throws(() => normalizeFieldValue(f('select'), 'c'), /unbekannte Auswahl/);
@@ -155,15 +213,27 @@ test('saveFields/loadFields: nur Manifest-Pfade, übrige Schlüssel bleiben', as
     'meta.title': 'Neu',
     'theme.accent': '#FF0000',
     'texts.de.app.title': 'Titel',
+    'styles.app.title.size': '24',
+    'styles.app.title.font': 'Supreme-Bold.woff2',
     'nicht.im.manifest': 'x',
   });
   assert.equal(after['meta.title'], 'Neu');
   assert.equal(after['theme.accent'], '#ff0000');
+  assert.equal(after['styles.app.title.size'], '24');
   const data = JSON.parse(await readFile(file, 'utf8'));
   assert.equal(data.meta.extra, 'bleibt');
   assert.equal(data.other.keep, true);
   assert.equal(data.texts.de.app.title, 'Titel');
+  assert.strictEqual(data.styles.app.title.size, 24); // als Zahl gespeichert
+  assert.equal(data.styles.app.title.font, 'Supreme-Bold.woff2');
   assert.equal(getPath(data, 'nicht.im.manifest'), undefined);
   await assert.rejects(() => saveFields(p, { 'theme.accent': 'rot' }), /Hex/);
   assert.throws(() => validateFieldValues(p, 'x'), /Ungültige Werte/);
+});
+
+test('readPreviewTemplate liefert die Vorlage aus dem Profilordner', async () => {
+  const html = await readPreviewTemplate(resolveProfile(VC, {}));
+  assert.ok(html.includes('data-slot="app.title"') && html.includes('.kdp'));
+  const none = { ...resolveProfile(VC, {}), fields: { ...VC.fields, preview: null } };
+  assert.equal(await readPreviewTemplate(none), '');
 });

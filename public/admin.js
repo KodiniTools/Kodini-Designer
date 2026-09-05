@@ -161,8 +161,15 @@ async function boot() {
     .forEach((b) => b.classList.toggle('hidden', generic));
   document.querySelector('#topnav [data-sec="fields"]')?.classList.toggle('hidden', !generic);
   if (generic) {
-    state.generic = { groups: r.data.groups || [], values: r.data.values || {} };
+    state.generic = {
+      groups: r.data.groups || [],
+      slots: r.data.slots || [],
+      langs: r.data.langs || [],
+      preview: r.data.preview || null,
+      values: r.data.values || {},
+    };
     state.nav = { section: 'fields', sub: '' };
+    await loadFonts(); // Schriftwahl der Slots (Fonts-Ordner des Profils)
   } else {
     state.generic = null;
     state.overrides = { de: r.data.overrides?.de || {}, en: r.data.overrides?.en || {} };

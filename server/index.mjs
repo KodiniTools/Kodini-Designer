@@ -24,7 +24,7 @@ import {
 } from './auth.mjs';
 import { readJson, readBody, sendJson, sendText, clientIp, csrfOk } from './util.mjs';
 import { loadContent, saveContent } from './content.mjs';
-import { loadFields, saveFields } from './fields.mjs';
+import { loadFields, saveFields, readPreviewTemplate } from './fields.mjs';
 import { saveUpload, listUploads, deleteUpload, moveUpload } from './uploads.mjs';
 import { listFonts } from './fonts.mjs';
 import { listFontAwesome } from './fontawesome.mjs';
@@ -226,7 +226,15 @@ async function handleApi(req, res, path) {
   if (path === '/api/fields' && method === 'GET') {
     if (!requireAuth(req, res)) return;
     if (!prof.fields) return sendJson(res, 400, { error: 'Dieses Profil hat keine Felder.' });
-    return sendJson(res, 200, { groups: prof.fields.groups, values: await loadFields(prof) });
+    return sendJson(res, 200, {
+      groups: prof.fields.groups,
+      slots: prof.fields.slots,
+      langs: prof.fields.langs,
+      preview: prof.fields.preview
+        ? { html: await readPreviewTemplate(prof), vars: prof.fields.preview.vars }
+        : null,
+      values: await loadFields(prof),
+    });
   }
   if (path === '/api/fields' && method === 'PUT') {
     if (!requireAuth(req, res)) return;

@@ -1,0 +1,164 @@
+<!-- Vorschau-Vorlage für den Tab „Felder“: Nachbau des Video-Cutter-Kopfbereichs
+     (App.vue / VideoTrimmer.vue). Der Designer setzt data-theme (light|dark) und
+     die CSS-Variablen aus preview.vars auf den Wurzelknoten und füllt die
+     [data-slot]-Elemente mit Text + Design. Alle Selektoren sind mit .kdp
+     eingegrenzt, damit sie das Admin-Layout nicht beeinflussen. -->
+<style>
+  .kdp {
+    --vc-accent: #4f8cff;
+    --vc-playhead: #ffd24a;
+    --vc-bg: #f6f7f9;
+    --vc-surface: #ffffff;
+    --vc-text: #1a1f26;
+    --vc-text-dim: #667085;
+    --vc-border: #d5dae1;
+    --vc-track-bg: #e6e9ee;
+    color: var(--vc-text);
+    background: var(--vc-bg);
+    font-family:
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    padding: 18px 16px 22px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .kdp[data-theme='dark'] {
+    --vc-bg: #0e1116;
+    --vc-surface: #161b22;
+    --vc-text: #e6edf3;
+    --vc-text-dim: #9aa4b2;
+    --vc-border: #2c333d;
+    --vc-track-bg: #262d38;
+  }
+  .kdp .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .kdp .logo {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--vc-accent);
+    color: #fff;
+    font-size: 20px;
+    flex: 0 0 auto;
+  }
+  .kdp h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: inherit;
+  }
+  .kdp .subtitle {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--vc-text-dim);
+  }
+  .kdp .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 28px 18px;
+    border: 2px dashed var(--vc-border);
+    border-radius: 14px;
+    background: var(--vc-surface);
+    text-align: center;
+    cursor: pointer;
+  }
+  .kdp .dz-icon {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--vc-accent);
+    color: #fff;
+    font-size: 20px;
+  }
+  .kdp .dz-title {
+    margin: 0;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .kdp .dz-hint {
+    margin: 0;
+    color: var(--vc-text-dim);
+    font-size: 14px;
+  }
+  .kdp .track {
+    position: relative;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--vc-track-bg);
+    max-width: 680px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .kdp .track .sel {
+    position: absolute;
+    left: 22%;
+    width: 38%;
+    top: 0;
+    bottom: 0;
+    background: var(--vc-accent);
+    opacity: 0.35;
+    border-radius: 5px;
+  }
+  .kdp .track .head {
+    position: absolute;
+    left: 41%;
+    top: -4px;
+    width: 2px;
+    height: 18px;
+    background: var(--vc-playhead);
+  }
+  .kdp .footer {
+    font-size: 12px;
+    color: var(--vc-text-dim);
+    text-align: center;
+  }
+  .kdp [data-slot] {
+    cursor: pointer;
+    border-radius: 4px;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    transition: outline-color 0.15s;
+  }
+  .kdp [data-slot]:hover,
+  .kdp [data-slot].kdp-active {
+    outline-color: var(--vc-accent);
+  }
+</style>
+<div class="kdp" data-theme="light">
+  <div class="topbar">
+    <span class="logo" aria-hidden="true">✂</span>
+    <div>
+      <h1 data-slot="app.title">Video schneiden</h1>
+      <p class="subtitle" data-slot="app.subtitle">Videos schnell und einfach schneiden.</p>
+    </div>
+  </div>
+  <div class="dropzone">
+    <div class="dz-icon" aria-hidden="true">▶</div>
+    <p class="dz-title" data-slot="drop.title">Video hierher ziehen oder klicken</p>
+    <p class="dz-hint" data-slot="drop.hint">MP4, WebM, MOV …</p>
+  </div>
+  <div class="track" aria-hidden="true"><span class="sel"></span><span class="head"></span></div>
+  <div class="footer" data-slot="footer">Serverseitige Verarbeitung mit FFmpeg.</div>
+</div>
