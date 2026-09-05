@@ -162,6 +162,8 @@ test('processEnvFor: Profil überstimmt die gemeinsame .env für Build/Deploy', 
 test('publicProfileInfo enthält keine Server-Pfade', () => {
   const info = publicProfileInfo(resolveProfile(HOME, {}));
   assert.deepEqual(Object.keys(info).sort(), [
+    'contentTabs',
+    'fields',
     'id',
     'kind',
     'languages',
@@ -170,5 +172,7 @@ test('publicProfileInfo enthält keine Server-Pfade', () => {
     'siteUrl',
     'tabs',
   ]);
+  assert.equal(info.contentTabs, true);
+  assert.equal(info.fields, null);
   assert.ok(!JSON.stringify(info).includes('/opt/'));
 });

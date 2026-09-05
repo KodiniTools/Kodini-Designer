@@ -59,11 +59,11 @@ export function contentPaths(p = profile) {
   const f = p.content.files;
   const l = p.content.locales;
   return {
-    overridesDe: f.overridesDe,
-    overridesEn: f.overridesEn,
-    tickerDe: f.tickerDe,
-    tickerEn: f.tickerEn,
-    media: f.media,
+    overridesDe: f.overridesDe || '',
+    overridesEn: f.overridesEn || '',
+    tickerDe: f.tickerDe || '',
+    tickerEn: f.tickerEn || '',
+    media: f.media || '',
     localesDe: l.de || '',
     localesEn: l.en || '',
     base: p.content.dir,

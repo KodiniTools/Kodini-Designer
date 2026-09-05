@@ -14,6 +14,7 @@ import { renderToolCards } from './toolcards.js';
 import { renderLayout } from './layout.js';
 import { renderMedia, renderFiles, loadServerFiles } from './media.js';
 import { renderIcons } from './icons.js';
+import { renderFields } from './fields.js';
 import { renderPublish, refreshPublishStatus, initSaveTracking } from './publish.js';
 
 // --- Login ---
@@ -67,6 +68,8 @@ export function renderMain() {
     else if (sub === 'files') renderFiles();
     else if (sub === 'icons') renderIcons();
     else if (sub === 'advanced') renderAdvanced();
+  } else if (section === 'fields') {
+    renderFields();
   } else if (section === 'publish') {
     renderPublish();
     refreshPublishStatus();
@@ -97,7 +100,12 @@ async function boot() {
     $('#appView').classList.add('hidden');
     return;
   }
-  const r = await api('/content');
+  // Profil ohne Home-Vertrag (nur Felder): generischer Modus – keine Sprach-Tabs,
+  // Werte aus /api/fields statt /api/content.
+  const prof0 = sess.data?.profile || null;
+  state.profile = prof0;
+  const generic = !!(prof0 && prof0.fields && !prof0.contentTabs);
+  const r = generic ? await api('/fields') : await api('/content');
   if (!r.ok) {
     $('#loginView').classList.remove('hidden');
     $('#appView').classList.add('hidden');
@@ -148,17 +156,27 @@ async function boot() {
       ? '⚠️ Neuer Server-Code – Neustart nötig (Vorschau/Veröffentlichen erledigt das)'
       : '';
   }
-  state.overrides = { de: r.data.overrides?.de || {}, en: r.data.overrides?.en || {} };
-  state.ticker = {
-    de: normTicker(r.data.ticker?.de),
-    en: normTicker(r.data.ticker?.en),
-  };
-  state.media = normalizeMedia(r.data.media);
-  state.loadedMedia = JSON.parse(JSON.stringify(state.media));
-  state.defaults = { de: r.data.defaults?.de || {}, en: r.data.defaults?.en || {} };
-  state.stagedItems = await mediaAll();
-  await loadServerFiles();
-  await loadFonts();
+  document
+    .querySelectorAll('#topnav [data-sec="de"], #topnav [data-sec="en"]')
+    .forEach((b) => b.classList.toggle('hidden', generic));
+  document.querySelector('#topnav [data-sec="fields"]')?.classList.toggle('hidden', !generic);
+  if (generic) {
+    state.generic = { groups: r.data.groups || [], values: r.data.values || {} };
+    state.nav = { section: 'fields', sub: '' };
+  } else {
+    state.generic = null;
+    state.overrides = { de: r.data.overrides?.de || {}, en: r.data.overrides?.en || {} };
+    state.ticker = {
+      de: normTicker(r.data.ticker?.de),
+      en: normTicker(r.data.ticker?.en),
+    };
+    state.media = normalizeMedia(r.data.media);
+    state.loadedMedia = JSON.parse(JSON.stringify(state.media));
+    state.defaults = { de: r.data.defaults?.de || {}, en: r.data.defaults?.en || {} };
+    state.stagedItems = await mediaAll();
+    await loadServerFiles();
+    await loadFonts();
+  }
 
   $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');

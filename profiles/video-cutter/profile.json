@@ -1,0 +1,182 @@
+{
+  "$schema": "../profile.schema.json",
+  "id": "video-cutter",
+  "name": "Video-Cutter",
+  "kind": "vite-spa",
+  "siteUrl": "https://kodinitools.com/video-cutter/",
+  "languages": ["de", "en"],
+  "repo": { "dir": "/opt/kodini/sites/video-cutter", "branch": "main", "remote": "origin" },
+  "webroot": "/var/www/kodinitools.com",
+  "content": {
+    "dir": "src/content",
+    "files": { "site": "site.json" },
+    "commitPaths": ["src/content/site.json"]
+  },
+  "uploads": { "dir": "{webroot}/uploads", "urlPrefix": "/uploads" },
+  "build": {
+    "command": ["npm", "run", "build"],
+    "env": { "VITE_API_BASE": "/video-cutter", "VITE_FFMPEG_CORE_URL": "/video-cutter/ffmpeg" },
+    "timeoutMinutes": 15
+  },
+  "preview": {
+    "base": "/designer/preview/",
+    "outDir": "dist-preview",
+    "env": { "base": "VITE_BASE", "outDir": "VITE_OUT_DIR" }
+  },
+  "deploy": {
+    "command": ["bash", "deploy/deploy.sh"],
+    "env": {
+      "SKIP_API": "1",
+      "BASE_PATH": "/video-cutter/",
+      "WEB_ROOT": "/var/www/kodinitools.com/video-cutter"
+    },
+    "timeoutMinutes": 20
+  },
+  "codeUpdate": { "enabled": true },
+  "tabs": ["fields"],
+  "fields": {
+    "file": "site",
+    "groups": [
+      {
+        "title": "Seite (Titel & Meta)",
+        "fields": [
+          {
+            "path": "meta.title",
+            "type": "text",
+            "label": "Seitentitel (Browser-Tab)",
+            "placeholder": "Video schneiden – KodiniTools"
+          },
+          {
+            "path": "meta.description",
+            "type": "textarea",
+            "label": "Meta-Beschreibung",
+            "placeholder": "Videos schnell und einfach schneiden – KodiniTools."
+          }
+        ]
+      },
+      {
+        "title": "Texte Deutsch",
+        "fields": [
+          {
+            "path": "texts.de.app.title",
+            "type": "text",
+            "label": "Titel der App",
+            "placeholder": "Video schneiden"
+          },
+          {
+            "path": "texts.de.app.subtitle",
+            "type": "text",
+            "label": "Untertitel",
+            "placeholder": "Videos schnell und einfach schneiden."
+          },
+          {
+            "path": "texts.de.drop.title",
+            "type": "text",
+            "label": "Ablagefläche – Titel",
+            "placeholder": "Video hierher ziehen oder klicken"
+          },
+          {
+            "path": "texts.de.drop.hint",
+            "type": "textarea",
+            "label": "Ablagefläche – Hinweis",
+            "placeholder": "MP4, WebM, MOV … Die Datei wird zum Schneiden auf den Server geladen."
+          },
+          {
+            "path": "texts.de.footer",
+            "type": "text",
+            "label": "Fußzeile",
+            "placeholder": "Serverseitige Verarbeitung mit FFmpeg."
+          }
+        ]
+      },
+      {
+        "title": "Texte English",
+        "fields": [
+          {
+            "path": "texts.en.app.title",
+            "type": "text",
+            "label": "App title",
+            "placeholder": "Cut video"
+          },
+          {
+            "path": "texts.en.app.subtitle",
+            "type": "text",
+            "label": "Subtitle",
+            "placeholder": "Cut videos quickly and easily."
+          },
+          {
+            "path": "texts.en.drop.title",
+            "type": "text",
+            "label": "Drop zone – title",
+            "placeholder": "Drop a video here or click"
+          },
+          {
+            "path": "texts.en.drop.hint",
+            "type": "textarea",
+            "label": "Drop zone – hint",
+            "placeholder": "MP4, WebM, MOV … The file is uploaded to the server for cutting."
+          },
+          {
+            "path": "texts.en.footer",
+            "type": "text",
+            "label": "Footer",
+            "placeholder": "Server-side processing with FFmpeg."
+          }
+        ]
+      },
+      {
+        "title": "Farben",
+        "fields": [
+          {
+            "path": "theme.accent",
+            "type": "color",
+            "label": "Akzentfarbe (Buttons, Auswahl)",
+            "placeholder": "#4f8cff"
+          },
+          {
+            "path": "theme.playhead",
+            "type": "color",
+            "label": "Abspielposition (Playhead)",
+            "placeholder": "#ffd24a"
+          },
+          {
+            "path": "theme.light.bg",
+            "type": "color",
+            "label": "Hell – Hintergrund",
+            "placeholder": "#f6f7f9"
+          },
+          {
+            "path": "theme.light.surface",
+            "type": "color",
+            "label": "Hell – Fläche",
+            "placeholder": "#ffffff"
+          },
+          {
+            "path": "theme.light.text",
+            "type": "color",
+            "label": "Hell – Text",
+            "placeholder": "#1a1f26"
+          },
+          {
+            "path": "theme.dark.bg",
+            "type": "color",
+            "label": "Dunkel – Hintergrund",
+            "placeholder": "#0e1116"
+          },
+          {
+            "path": "theme.dark.surface",
+            "type": "color",
+            "label": "Dunkel – Fläche",
+            "placeholder": "#161b22"
+          },
+          {
+            "path": "theme.dark.text",
+            "type": "color",
+            "label": "Dunkel – Text",
+            "placeholder": "#e6edf3"
+          }
+        ]
+      }
+    ]
+  }
+}

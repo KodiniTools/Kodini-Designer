@@ -1374,6 +1374,9 @@ export const state = {
   serverFiles: { de: [], en: [], shared: [] }, // Server-Uploads getrennt nach Sprache
   fonts: [], // verfügbare Schriftarten aus /fonts (für die Laufband-Schrift)
   objectUrls: new Map(), // id -> objectURL (für Vorschau)
-  nav: { section: 'de', sub: 'ticker' }, // Ebene 1 (de|en|dateien|publish) + Ebene 2
+  nav: { section: 'de', sub: 'ticker' }, // Ebene 1 (de|en|fields|publish) + Ebene 2
   publishing: false, // läuft gerade eine Veröffentlichung?
+  profile: null, // aktives Site-Profil (öffentliche Infos aus /api/session)
+  // Generischer Tab „Felder“ (Profile ohne Home-Vertrag): { groups, values }
+  generic: null,
 };

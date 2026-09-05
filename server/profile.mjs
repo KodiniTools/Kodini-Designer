@@ -31,7 +31,7 @@ function isObj(v) {
   return !!v && typeof v === 'object' && !Array.isArray(v);
 }
 function str(v, name, { optional = false } = {}) {
-  if (v === undefined || v === null) {
+  if (v === undefined || v === null || (optional && v === '')) {
     if (optional) return '';
     fail(`${name} fehlt`);
   }
@@ -86,7 +86,8 @@ export function validateProfile(raw, source = 'profile.json') {
   if (!isObj(raw.content.files)) fail('content.files fehlt');
   const files = {};
   for (const [k, v] of Object.entries(raw.content.files)) files[k] = str(v, `content.files.${k}`);
-  if (!files.media) fail('content.files.media fehlt');
+  // Home-artige Profile brauchen media; Feld-Profile (fields) nur die Felddatei.
+  if (!files.media && !isObj(raw.fields)) fail('content.files.media fehlt');
   const locales = {};
   if (raw.content.locales !== undefined) {
     if (!isObj(raw.content.locales)) fail('content.locales muss ein Objekt sein');
@@ -153,7 +154,68 @@ export function validateProfile(raw, source = 'profile.json') {
     // Ordner für den persistierten Vorgangs-Status (Vorschau/Veröffentlichung).
     stateDir: str(raw.stateDir, 'stateDir', { optional: true }) || '{repo}/.kodini-admin',
     tabs: strList(raw.tabs, 'tabs', { optional: true }),
+    // Generischer Tab „Felder“ (manifestgesteuert) – für Seiten ohne Home-Vertrag.
+    fields:
+      raw.fields === undefined || raw.fields === null ? null : validateFields(raw.fields, files),
   };
+}
+
+// --- Generische Felder (Tab „Felder“) ---
+export const FIELD_TYPES = new Set(['text', 'textarea', 'color', 'number', 'select', 'toggle']);
+const PATH_RE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+function validateFields(raw, files) {
+  if (!isObj(raw)) fail('fields muss ein Objekt sein');
+  const file = str(raw.file, 'fields.file');
+  if (!files[file]) fail(`fields.file „${file}“ ist nicht in content.files definiert`);
+  if (!Array.isArray(raw.groups) || !raw.groups.length) fail('fields.groups fehlt');
+  const seen = new Set();
+  const groups = raw.groups.map((g, gi) => {
+    if (!isObj(g)) fail(`fields.groups[${gi}] muss ein Objekt sein`);
+    if (!Array.isArray(g.fields) || !g.fields.length) fail(`fields.groups[${gi}].fields fehlt`);
+    const fields = g.fields.map((f, fi) => {
+      const where = `fields.groups[${gi}].fields[${fi}]`;
+      if (!isObj(f)) fail(`${where} muss ein Objekt sein`);
+      const path = str(f.path, `${where}.path`);
+      if (!PATH_RE.test(path)) fail(`${where}.path „${path}“ ungültig`);
+      if (seen.has(path)) fail(`${where}.path „${path}“ doppelt`);
+      seen.add(path);
+      const type = str(f.type, `${where}.type`, { optional: true }) || 'text';
+      if (!FIELD_TYPES.has(type))
+        fail(`${where}.type „${type}“ (erlaubt: ${[...FIELD_TYPES].join(', ')})`);
+      const out = {
+        path,
+        type,
+        label: str(f.label, `${where}.label`),
+        hint: str(f.hint, `${where}.hint`, { optional: true }),
+        placeholder: str(f.placeholder, `${where}.placeholder`, { optional: true }),
+      };
+      if (type === 'number') {
+        const n = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+        out.min = n(f.min, 0);
+        out.max = n(f.max, 100);
+        out.step = n(f.step, 1);
+        out.unit = str(f.unit, `${where}.unit`, { optional: true });
+        if (out.max <= out.min) fail(`${where}: max muss größer als min sein`);
+      }
+      if (type === 'select') {
+        out.options = strList(f.options, `${where}.options`);
+        if (!out.options.length) fail(`${where}.options darf nicht leer sein`);
+      }
+      if (type === 'text' || type === 'textarea') {
+        const m = Number(f.maxLength);
+        out.maxLength =
+          Number.isFinite(m) && m > 0 ? Math.min(m, 20000) : type === 'text' ? 300 : 5000;
+      }
+      return out;
+    });
+    return { title: str(g.title, `fields.groups[${gi}].title`), fields };
+  });
+  return { file, groups };
+}
+
+/** Alle Felder eines Manifests flach (für Validierung/Anzeige). */
+export function flatFields(fields) {
+  return fields ? fields.groups.flatMap((g) => g.fields) : [];
 }
 
 /** Manifest-Datei lesen + validieren. */
@@ -270,5 +332,8 @@ export function publicProfileInfo(p) {
     languages: p.languages,
     tabs: p.tabs,
     previewBase: p.preview.base,
+    // Home-Vertrag (Laufband/Texte/Medien/…) nur, wenn die Dateien dafür da sind.
+    contentTabs: !!(p.content.files.media && p.content.files.overridesDe),
+    fields: p.fields ? p.fields.groups : null,
   };
 }

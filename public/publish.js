@@ -119,6 +119,17 @@ function cleanTicker(t) {
 }
 
 async function saveDraft() {
+  // Generischer Modus (Tab „Felder“): nur die Feldwerte des Profils speichern.
+  if (state.generic) {
+    const rf = await api('/fields', { method: 'PUT', body: { values: state.generic.values } });
+    if (rf.ok) {
+      state.generic.values = rf.data.values || state.generic.values;
+      markSaved();
+      return true;
+    }
+    toast('Speichern fehlgeschlagen: ' + (rf.data?.error || rf.status));
+    return false;
+  }
   const r = await api('/content', { method: 'PUT', body: buildPayload() });
   if (r.ok) {
     state.loadedMedia = JSON.parse(JSON.stringify(r.data.saved.media));
@@ -447,6 +458,12 @@ function showPreviewChooser(win, s) {
   // Vorschau liegt relativ zum Auslieferungsort (z. B. /admin/preview/ oder
   // /designer/preview/) – wie die API-Basis in core.js.
   const base = new URL('preview/', document.baseURI).pathname;
+  // Generischer Modus (eine App, keine DE/EN-Seiten): direkt öffnen.
+  if (state.generic) {
+    if (win) win.location.href = base;
+    else window.open(base, '_blank');
+    return;
+  }
   if (!win) {
     // Popup wurde blockiert -> beide Seiten direkt öffnen.
     window.open(base, '_blank');
@@ -564,6 +581,7 @@ function editSnapshot() {
     overrides: state.overrides,
     ticker: state.ticker,
     media: state.media,
+    generic: state.generic ? state.generic.values : null,
   });
 }
 function isDirty() {
@@ -749,6 +767,7 @@ function applySnapshot(json) {
   state.overrides = s.overrides;
   state.ticker = s.ticker;
   state.media = s.media;
+  if (state.generic && s.generic) state.generic.values = s.generic;
   prevSnapshot = json; // gilt nicht als neue Änderung
   lastEditAt = Date.now();
   renderMain();
