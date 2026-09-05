@@ -1,36 +1,60 @@
 # Server-Setup (Kodini Designer)
 
-Der Designer läuft als eigener Dienst neben der Website. Er ersetzt den
-bisherigen Dienst `kodini-admin` aus dem Website-Repo (gleicher Port 9020,
-gleiche nginx-Blöcke, gleiche `.env`).
+Der Designer läuft als eigener Dienst **neben** dem bestehenden `kodini-admin`
+aus dem Website-Repo. `kodini-admin` bleibt unverändert (Port 9020, `/admin`).
 
-| Komponente                               | Ort                                          |
-| ---------------------------------------- | -------------------------------------------- |
-| Designer-Klon                            | `/opt/kodini/designer`                       |
-| Website-Klon (Profil `kodinitools-home`) | `/opt/kodini/repo`                           |
-| Webroot / Uploads                        | `/var/www/kodinitools.com` / `…/uploads`     |
-| Dienst                                   | `127.0.0.1:9020` (systemd `kodini-designer`) |
-| Secrets                                  | `/opt/kodini/.env` (chmod 600)               |
+| Komponente                               | Ort                                                                      |
+| ---------------------------------------- | ------------------------------------------------------------------------ |
+| Designer-Klon                            | `/opt/kodini/designer`                                                   |
+| Website-Klon (Profil `kodinitools-home`) | `/opt/kodini/repo` (geteilt mit `kodini-admin`)                          |
+| Webroot / Uploads                        | `/var/www/kodinitools.com` / `…/uploads` (geteilt)                       |
+| Dienst                                   | `127.0.0.1:9030` (systemd `kodini-designer`), nginx `/designer`          |
+| Status / Vorschau des Designers          | `/opt/kodini/designer-state`, `/opt/kodini/designer-preview`             |
+| Konfiguration                            | `/opt/kodini/.env` (geteilt) + `/opt/kodini/designer.env` (nur Designer) |
 
-## Umstellung von `kodini-admin` auf `kodini-designer`
+Beide Dienste bearbeiten **dieselben Content-Dateien** in `/opt/kodini/repo`.
+Entwürfe deshalb nicht gleichzeitig in beiden Oberflächen speichern (der letzte
+Speichervorgang gewinnt). Veröffentlichen aus dem Designer committet dieselben
+Dateien wie aus dem Admin.
+
+## Einrichtung (Parallelbetrieb)
 
 ```bash
-# 1. Designer klonen (Service-User = Owner des Webroots, i. d. R. www-data)
-sudo -u www-data git clone https://github.com/KodiniTools/Kodini-Designer.git /opt/kodini/designer
+# 0. Service-User = Owner des Webroots (i. d. R. www-data)
+U=$(stat -c %U /var/www/kodinitools.com)
 
-# 2. Profil in die bestehende .env eintragen (Rest bleibt gültig)
-echo 'PROFILE=kodinitools-home' | sudo tee -a /opt/kodini/.env
+# 1. Zugriff: Deploy-Key des Servers auch beim Designer-Repo hinterlegen
+#    (GitHub → Kodini-Designer → Settings → Deploy keys, nur Lesen reicht)
+sudo cat /opt/kodini/deploy_key.pub
 
-# 3. Alten Dienst stoppen, neuen installieren
-sudo systemctl disable --now kodini-admin
+# 2. Designer klonen
+SSH_CMD="ssh -i /opt/kodini/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=/opt/kodini/known_hosts -o StrictHostKeyChecking=accept-new"
+sudo -u "$U" GIT_SSH_COMMAND="$SSH_CMD" git clone -b main git@github.com:KodiniTools/Kodini-Designer.git /opt/kodini/designer
+sudo -u "$U" git -C /opt/kodini/designer config core.sshCommand "$SSH_CMD"
+
+# 3. Eigene Ordner + Konfiguration
+sudo install -d -o "$U" -g "$U" /opt/kodini/designer-state /opt/kodini/designer-preview
+sudo cp /opt/kodini/designer/deploy/designer.env.example /opt/kodini/designer.env
+sudo chown "$U:$U" /opt/kodini/designer.env && sudo chmod 600 /opt/kodini/designer.env
+
+# 4. Dienst
 sudo cp /opt/kodini/designer/deploy/kodini-designer.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now kodini-designer
 systemctl status kodini-designer --no-pager
+journalctl -u kodini-designer -n 20 --no-pager
+curl -s http://127.0.0.1:9030/api/session
+
+# 5. nginx: Blöcke aus deploy/nginx-designer.conf in den Server-Block einfügen
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-nginx braucht keine Änderung, solange die Blöcke aus `nginx-designer.conf`
-(identisch zu den bisherigen `nginx-admin.conf`-Blöcken) bereits eingebunden sind.
+Danach: https://kodinitools.com/designer/ – Anmeldung mit dem Admin-Passwort
+(gleiche `.env`), Kopfzeile zeigt „Kodinitools Home“. Erst „Vorschau“ testen
+(`/designer/preview/`), dann veröffentlichen.
+
+Kein `npm install` nötig: der Dienst hat keine Laufzeit-Abhängigkeiten.
+Ist der Service-User nicht `www-data`, `User=`/`Group=` in der Unit anpassen.
 
 ## Designer aktualisieren
 
@@ -39,12 +63,17 @@ sudo -u www-data git -C /opt/kodini/designer pull --ff-only
 sudo systemctl restart kodini-designer
 ```
 
-Der Designer hat keine Laufzeit-Abhängigkeiten (`npm install` ist nur für
-Lint/Tests nötig). Ein Website-Deploy (`deploy.sh` im Website-Repo) berührt den
-Designer nicht mehr.
+Ein Website-Deploy (`deploy.sh` im Website-Repo) berührt den Designer nicht.
+
+## Ablösung von `kodini-admin` (später, optional)
+
+Wenn der Designer den Admin ersetzen soll: in `designer.env` `PORT=9020`,
+`COOKIE_PATH=/admin`, `PREVIEW_BASE=/admin/preview/` setzen, dann
+`sudo systemctl disable --now kodini-admin && sudo systemctl restart kodini-designer`.
+Die vorhandenen `/admin`-nginx-Blöcke zeigen dann auf den Designer.
 
 ## Weitere Profile
 
 Pro Website ein Ordner `profiles/<id>/profile.json` (siehe `profiles/README.md`),
 das Repo auf dem Server auschecken und dessen Pfad in `ReadWritePaths` der Unit
-ergänzen. Aktiv ist immer genau ein Profil (`PROFILE=<id>` in der `.env`).
+ergänzen. Aktiv ist immer genau ein Profil (`PROFILE=<id>` in `designer.env`).

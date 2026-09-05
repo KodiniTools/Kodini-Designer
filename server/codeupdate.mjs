@@ -12,7 +12,7 @@ import { readdir, stat, writeFile, mkdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config } from './config.mjs';
+import { config, profile } from './config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Startzeit des Prozesses: Server-Dateien, die danach geändert wurden, sind
@@ -112,7 +112,7 @@ export async function restartIfServerCodeChanged(log) {
 
 // --- Persistenz von Vorgangs-Status (Vorschau/Veröffentlichung) über einen
 // Neustart hinweg, damit das Frontend beim Polling das Ergebnis noch sieht. ---
-const STATE_DIR = resolve(config.repoDir, '.kodini-admin');
+const STATE_DIR = profile.stateDir;
 
 /** Status-Objekt unter `name` speichern (best effort, nicht blockierend). */
 export async function persistState(name, state) {

@@ -1,6 +1,6 @@
 // Kodini Designer — HTTP-Server (nur Node-Built-ins).
-// Läuft lokal auf 127.0.0.1:PORT, hinter nginx unter /admin bzw. /admin/api.
-// nginx entfernt das /admin-Präfix, hier kommen also / und /api/... an.
+// Läuft lokal auf 127.0.0.1:PORT, hinter nginx unter einem Präfix (z. B. /admin
+// oder /designer); nginx entfernt das Präfix, hier kommen also / und /api/... an.
 // Welche Website bearbeitet wird, bestimmt das aktive Site-Profil (config.mjs).
 
 import http from 'node:http';
@@ -88,7 +88,7 @@ async function serveStatic(req, res, urlPath) {
   }
 }
 
-// --- Auslieferung der Vorschau (dist-preview/) unter /admin/preview/ ---
+// --- Auslieferung der Vorschau (Profil: preview.outDir) unter <präfix>/preview/ ---
 // Nur für angemeldete Admins. Die Vorschau-HTML referenziert eigene Assets
 // unter /admin/preview/_astro/… (base), Medien/Bilder/Videos hingegen unter
 // dem Live-Root (/uploads, /videos, /images) — die existieren dort bereits.
@@ -96,9 +96,7 @@ async function servePreview(req, res, urlPath) {
   if (!isAuthenticated(req)) {
     noindex(res);
     res.writeHead(401, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' });
-    res.end(
-      '<p>Nicht angemeldet. Bitte zuerst im <a href="/admin/">Adminbereich</a> anmelden.</p>',
-    );
+    res.end('<p>Nicht angemeldet. Bitte zuerst im <a href="../">Designer</a> anmelden.</p>');
     return;
   }
   // '/preview' oder '/preview/...' -> relativer Pfad innerhalb dist-preview/

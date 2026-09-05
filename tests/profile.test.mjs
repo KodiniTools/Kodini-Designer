@@ -64,6 +64,20 @@ test('Umgebung überstimmt das Manifest (bestehende .env bleibt gültig)', () =>
   assert.equal(p.preview.outDir, '/tmp/site/dist-preview');
 });
 
+test('Parallelbetrieb: STATE_DIR / PREVIEW_BASE / PREVIEW_DIR überstimmen das Profil', () => {
+  const def = resolveProfile(HOME, {});
+  assert.equal(def.stateDir, '/opt/kodini/repo/.kodini-admin');
+  const p = resolveProfile(HOME, {
+    STATE_DIR: '/opt/kodini/designer-state',
+    PREVIEW_BASE: '/designer/preview/',
+    PREVIEW_DIR: '/opt/kodini/designer-preview',
+  });
+  assert.equal(p.stateDir, '/opt/kodini/designer-state');
+  assert.equal(p.preview.base, '/designer/preview/');
+  assert.equal(p.preview.outDir, '/opt/kodini/designer-preview');
+  assert.equal(publicProfileInfo(p).previewBase, '/designer/preview/');
+});
+
 test('loadActiveProfile: PROFILE / PROFILE_FILE / Default', () => {
   assert.equal(loadActiveProfile({}).id, 'kodinitools-home');
   assert.equal(loadActiveProfile({ PROFILE: 'kodinitools-home' }).id, 'kodinitools-home');
@@ -110,6 +124,7 @@ test('publicProfileInfo enthält keine Server-Pfade', () => {
     'kind',
     'languages',
     'name',
+    'previewBase',
     'siteUrl',
     'tabs',
   ]);

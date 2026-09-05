@@ -6,8 +6,10 @@
 // Auswahl:  PROFILE=<id>            (Ordnername unter profiles/, Default kodinitools-home)
 //     oder  PROFILE_FILE=/pfad/profile.json
 // Platzhalter in Pfaden: {repo} = Repo-Verzeichnis, {webroot} = Webroot.
-// Umgebungsvariablen (REPO_DIR, WEBROOT, UPLOADS_DIR, GIT_BRANCH, GIT_REMOTE)
-// überstimmen das Manifest – so bleibt eine bestehende .env gültig.
+// Umgebungsvariablen (REPO_DIR, WEBROOT, UPLOADS_DIR, GIT_BRANCH, GIT_REMOTE,
+// STATE_DIR, PREVIEW_BASE, PREVIEW_DIR) überstimmen das Manifest – so bleibt eine
+// bestehende .env gültig, und ein Parallelbetrieb neben dem alten Admin-Dienst
+// (eigener Pfad/Port, eigene Vorschau- und Status-Ordner) braucht kein zweites Profil.
 
 import { readFileSync } from 'node:fs';
 import { dirname, resolve, isAbsolute } from 'node:path';
@@ -146,6 +148,8 @@ export function validateProfile(raw, source = 'profile.json') {
       timeoutMinutes: minutes(raw.deploy.timeoutMinutes, 20),
     },
     codeUpdate: { enabled: raw.codeUpdate?.enabled !== false },
+    // Ordner für den persistierten Vorgangs-Status (Vorschau/Veröffentlichung).
+    stateDir: str(raw.stateDir, 'stateDir', { optional: true }) || '{repo}/.kodini-admin',
     tabs: strList(raw.tabs, 'tabs', { optional: true }),
   };
 }
@@ -195,7 +199,12 @@ export function resolveProfile(p, env = process.env) {
     },
     fonts: { ...p.fonts, dirs: p.fonts.dirs.map((d) => abs(d)) },
     fontawesome: { dirs: p.fontawesome.dirs.map((d) => abs(d)) },
-    preview: { ...p.preview, outDir: abs(p.preview.outDir) },
+    preview: {
+      ...p.preview,
+      base: env.PREVIEW_BASE || p.preview.base,
+      outDir: env.PREVIEW_DIR ? resolve(env.PREVIEW_DIR) : abs(p.preview.outDir),
+    },
+    stateDir: env.STATE_DIR ? resolve(env.STATE_DIR) : abs(p.stateDir),
   };
 }
 
@@ -216,5 +225,6 @@ export function publicProfileInfo(p) {
     siteUrl: p.siteUrl,
     languages: p.languages,
     tabs: p.tabs,
+    previewBase: p.preview.base,
   };
 }

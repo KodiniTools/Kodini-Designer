@@ -8,8 +8,9 @@ für Editoren: `profile.schema.json`.
 
 Platzhalter in Pfaden: `{repo}` = Repo-Verzeichnis, `{webroot}` = Webroot.
 Relative Pfade beziehen sich auf das Repo. Die Umgebungsvariablen `REPO_DIR`,
-`WEBROOT`, `UPLOADS_DIR`, `GIT_BRANCH`, `GIT_REMOTE` überstimmen das Manifest
-(so bleibt eine bestehende `.env` gültig).
+`WEBROOT`, `UPLOADS_DIR`, `GIT_BRANCH`, `GIT_REMOTE`, `STATE_DIR`, `PREVIEW_BASE`,
+`PREVIEW_DIR` überstimmen das Manifest (so bleibt eine bestehende `.env` gültig,
+und ein Parallelbetrieb neben `kodini-admin` braucht kein zweites Profil).
 
 | Feld                                        | Bedeutung                                                                                                                                      |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -26,6 +27,7 @@ Relative Pfade beziehen sich auf das Repo. Die Umgebungsvariablen `REPO_DIR`,
 | `preview.base/outDir/env`                   | Öffentlicher Pfad + Ausgabeordner der Vorschau; `env.base`/`env.outDir` = Namen der Umgebungsvariablen, über die der Build diese Werte bekommt |
 | `deploy.command/timeoutMinutes`             | Deploy nach dem Push (`./…` = relativ zum Repo)                                                                                                |
 | `codeUpdate.enabled`                        | Vor der Vorschau `origin/<branch>` per fast-forward holen                                                                                      |
+| `stateDir`                                  | Ordner für den persistierten Vorgangs-Status (Default `{repo}/.kodini-admin`)                                                                  |
 | `tabs`                                      | Reihenfolge/Auswahl der Tabs (heute informativ; das Frontend rendert noch feste Tabs)                                                          |
 
 ## Profil `kodinitools-home`

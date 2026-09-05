@@ -1,7 +1,7 @@
 // Vorschau-Build: baut den AKTUELLEN Arbeitsstand (die per saveContent
 // geschriebenen Entwürfe) in ein separates Verzeichnis dist-preview/ mit
-// base '/admin/preview/'. Es wird NICHTS committet, gepusht oder deployt.
-// Der Admin-Dienst liefert dist-preview/ unter /admin/preview/ aus, sodass
+// base '<präfix>/preview/' (Profil/PREVIEW_BASE). Es wird NICHTS committet,
+// gepusht oder deployt. Der Dienst liefert das Verzeichnis unter /preview/ aus, sodass
 // der Admin alle Änderungen vor dem Veröffentlichen im Browser sieht.
 
 import { execFile } from 'node:child_process';
