@@ -8,7 +8,7 @@
 // läuft noch der alte Prozess – unter systemd (Restart=on-failure) beendet er
 // sich nach Abschluss selbst und wird automatisch neu gestartet.
 
-import { readdir, stat, writeFile, mkdir } from 'node:fs/promises';
+import { readdir, stat, writeFile, mkdir, readFile, access } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,6 +65,17 @@ export async function updateCodeFromRemote(p, run, log, env) {
       .trim()
       .slice(0, 7);
   let from = '';
+  // Entwürfe (vom Designer geschriebene Content-Dateien) blockieren einen
+  // Fast-Forward, wenn origin dieselbe Datei geändert hat. Sie werden vor dem
+  // Merge gesichert, zurückgesetzt und danach wiederhergestellt – der Entwurf
+  // gewinnt, weil er dem aktuellen Stand der Oberfläche entspricht.
+  const drafts = new Map(); // relativer Pfad -> Inhalt
+  const restoreDrafts = async () => {
+    for (const [rel, content] of drafts) {
+      await writeFile(resolve(p.repo.dir, rel), content, 'utf8');
+    }
+    if (drafts.size) log(`Entwürfe wiederhergestellt: ${[...drafts.keys()].join(', ')}`);
+  };
   try {
     from = (await run('git', ['rev-parse', 'HEAD'])).trim();
     log(`git fetch ${remote} ${branch} (Code-Update für die Vorschau)`);
@@ -74,7 +85,37 @@ export async function updateCodeFromRemote(p, run, log, env) {
       log(`Code ist aktuell (${short(from)}).`);
       return { updated: false, from: short(from), to: short(to), files: [] };
     }
-    await run('git', ['merge', '--ff-only', `${remote}/${branch}`]);
+    const paths = p.content.commitPaths || [];
+    if (paths.length) {
+      // Porcelain-Zeilen: "XY pfad" (XY = Status-Spalten; Ausgabe kann getrimmt sein).
+      const dirty = (await run('git', ['status', '--porcelain', '--', ...paths]))
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) =>
+          l
+            .replace(/^\S{1,2}\s+/, '')
+            .replace(/^.* -> /, '')
+            .trim(),
+        )
+        .filter(Boolean);
+      for (const rel of dirty) {
+        try {
+          drafts.set(rel, await readFile(resolve(p.repo.dir, rel), 'utf8'));
+        } catch {
+          /* gelöscht -> nichts zu sichern */
+        }
+      }
+      if (drafts.size) {
+        log(`Entwürfe vor dem Code-Update gesichert: ${[...drafts.keys()].join(', ')}`);
+        await run('git', ['checkout', '--', ...drafts.keys()]);
+      }
+    }
+    try {
+      await run('git', ['merge', '--ff-only', `${remote}/${branch}`]);
+    } finally {
+      await restoreDrafts();
+    }
     const files = (await run('git', ['diff', '--name-only', from, to]))
       .split('\n')
       .map((s) => s.trim())
@@ -90,6 +131,24 @@ export async function updateCodeFromRemote(p, run, log, env) {
     log(`Code-Update übersprungen (Vorschau baut den lokalen Stand): ${msg}`);
     return { updated: false, from: short(from), to: '', files: [], error: msg };
   }
+}
+
+/**
+ * Stellt sicher, dass die Abhängigkeiten der Website installiert sind (frischer
+ * Klon ohne node_modules -> `npm ci --include=dev`), damit der Vorschau-Build
+ * (z. B. vue-tsc/vite/astro) läuft. Ohne package.json passiert nichts.
+ */
+export async function ensureDependencies(p, run, log, env) {
+  const exists = (rel) =>
+    access(resolve(p.repo.dir, rel)).then(
+      () => true,
+      () => false,
+    );
+  if (!(await exists('package.json'))) return false;
+  if (await exists('node_modules/.package-lock.json')) return false;
+  log('node_modules fehlt → npm ci --include=dev');
+  log(await run('npm', ['ci', '--include=dev'], { env, timeout: 15 * 60 * 1000 }));
+  return true;
 }
 
 /**

@@ -12,6 +12,7 @@ import { runStreaming } from './util.mjs';
 import { processEnvFor } from './profile.mjs';
 import {
   updateCodeFromRemote,
+  ensureDependencies,
   restartIfServerCodeChanged,
   persistState,
   restoreState,
@@ -85,7 +86,9 @@ function createPreviewJob(p) {
       ? await updateCodeFromRemote(p, run, log, env)
       : { updated: false, from: '', to: '', files: [] };
 
-    // 2. Bauen.
+    // 2. Abhängigkeiten (frischer Klon) und bauen.
+    state.step = 'install';
+    await ensureDependencies(p, run, log, env);
     state.step = 'build';
     log(`${p.build.command.join(' ')} (Vorschau) -> ${p.preview.outDir}`);
     const [buildCmd, ...buildArgs] = p.build.command;
