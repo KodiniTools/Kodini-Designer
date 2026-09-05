@@ -10,6 +10,7 @@ import {
   validateProfile,
   loadActiveProfile,
   loadActiveProfiles,
+  processEnvFor,
   publicProfileInfo,
   PROFILES_DIR,
 } from '../server/profile.mjs';
@@ -136,6 +137,26 @@ test('Validierung lehnt unvollständige oder falsche Manifeste ab', () => {
   assert.equal(min.preview.base, '/admin/preview/');
   assert.equal(min.uploads.urlPrefix, '/uploads');
   assert.equal(min.repo.branch, 'main');
+});
+
+test('processEnvFor: Profil überstimmt die gemeinsame .env für Build/Deploy', () => {
+  const p = resolveProfile(HOME, { REPO_DIR: '/tmp/site', WEBROOT: '/tmp/www' });
+  const env = processEnvFor(
+    p,
+    { ASTRO_BASE: '/x/' },
+    {
+      WEBROOT: '/var/www/other',
+      REPO_DIR: '/opt/other',
+      PATH: '/usr/bin',
+    },
+  );
+  assert.equal(env.WEBROOT, '/tmp/www');
+  assert.equal(env.REPO_DIR, '/tmp/site');
+  assert.equal(env.UPLOADS_DIR, '/tmp/www/uploads');
+  assert.equal(env.BRANCH, 'main');
+  assert.equal(env.ASTRO_BASE, '/x/');
+  assert.equal(env.PATH, '/usr/bin');
+  assert.deepEqual(HOME.deploy.env, {});
 });
 
 test('publicProfileInfo enthält keine Server-Pfade', () => {

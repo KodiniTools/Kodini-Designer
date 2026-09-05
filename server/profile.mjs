@@ -146,6 +146,7 @@ export function validateProfile(raw, source = 'profile.json') {
     },
     deploy: {
       command: cmd(raw.deploy.command, 'deploy.command'),
+      env: envMap(raw.deploy.env, 'deploy.env'),
       timeoutMinutes: minutes(raw.deploy.timeoutMinutes, 20),
     },
     codeUpdate: { enabled: raw.codeUpdate?.enabled !== false },
@@ -238,6 +239,25 @@ export function loadActiveProfiles(env = process.env) {
 /** Standard-Profil laut Umgebung (das erste aktive Profil). */
 export function loadActiveProfile(env = process.env) {
   return loadActiveProfiles(env).values().next().value;
+}
+
+/**
+ * Umgebung für Build-/Deploy-Prozesse eines Profils: die Dienst-Umgebung, darüber
+ * die Repo-/Webroot-Angaben DES PROFILS (überstimmen REPO_DIR/WEBROOT/UPLOADS_DIR/
+ * BRANCH aus der gemeinsamen .env, die sonst für jedes Profil gelten würden), dann
+ * die festen Werte aus dem Manifest (build.env bzw. deploy.env).
+ */
+export function processEnvFor(p, extra = {}, base = process.env) {
+  return {
+    ...base,
+    REPO_DIR: p.repo.dir,
+    WEBROOT: p.webroot,
+    UPLOADS_DIR: p.uploads.dir,
+    BRANCH: p.repo.branch,
+    GIT_BRANCH: p.repo.branch,
+    GIT_REMOTE: p.repo.remote,
+    ...extra,
+  };
 }
 
 /** Für das Frontend: öffentliche, unkritische Profil-Infos (keine Pfade). */

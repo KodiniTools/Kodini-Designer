@@ -9,6 +9,7 @@ import { execFile } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { runStreaming } from './util.mjs';
+import { processEnvFor } from './profile.mjs';
 import {
   updateCodeFromRemote,
   restartIfServerCodeChanged,
@@ -73,7 +74,7 @@ function createPreviewJob(p) {
     // Build-Umgebung aus dem Profil: base + Ausgabeverzeichnis der Vorschau
     // (Variablennamen je Site-Typ, z. B. ASTRO_BASE/ASTRO_OUT_DIR) und feste Werte
     // (Telemetrie aus). HOME sicher beschreibbar (npm-/Build-Cache im Sandbox).
-    const env = { ...process.env, ...p.build.env, HOME: buildHome };
+    const env = processEnvFor(p, { ...p.build.env, HOME: buildHome });
     if (p.preview.env.base) env[p.preview.env.base] = p.preview.base;
     if (p.preview.env.outDir) env[p.preview.env.outDir] = p.preview.outDir;
 
