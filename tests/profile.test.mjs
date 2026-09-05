@@ -105,6 +105,26 @@ test('Seiten-Overrides (REPO_DIR …) gelten nur für das erste Profil', () => {
   assert.equal(rev.get('kodinitools-home').repo.dir, '/opt/kodini/repo');
 });
 
+test('FONTS_DIR ergänzt die Schriftordner aller Profile (ohne Duplikate)', () => {
+  const map = loadActiveProfiles({
+    PROFILES: 'kodinitools-home,video-cutter',
+    FONTS_DIR: '/var/www/kodinitools.com/fonts, /srv/fonts',
+  });
+  const home = map.get('kodinitools-home');
+  const vc = map.get('video-cutter');
+  assert.deepEqual(home.fonts.dirs, [
+    '/var/www/kodinitools.com/fonts',
+    '/opt/kodini/repo/public/fonts',
+    '/srv/fonts',
+  ]);
+  assert.ok(
+    vc.fonts.dirs.includes('/srv/fonts') &&
+      vc.fonts.dirs.includes('/var/www/kodinitools.com/fonts'),
+  );
+  assert.equal(new Set(vc.fonts.dirs).size, vc.fonts.dirs.length);
+  assert.equal(loadActiveProfiles({}).get('kodinitools-home').fonts.dirs.length, 2);
+});
+
 test('loadActiveProfiles: PROFILES-Liste, Reihenfolge, Duplikate, Fehler', () => {
   const one = loadActiveProfiles({});
   assert.deepEqual([...one.keys()], ['kodinitools-home']);
