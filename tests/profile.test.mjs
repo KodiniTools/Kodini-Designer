@@ -198,6 +198,8 @@ test('processEnvFor: Profil überstimmt die gemeinsame .env für Build/Deploy', 
   assert.equal(env.REPO_DIR, '/tmp/site');
   assert.equal(env.UPLOADS_DIR, '/tmp/www/uploads');
   assert.equal(env.BRANCH, 'main');
+  // devDependencies trotz NODE_ENV=production des Dienstes (Build braucht sie)
+  assert.equal(processEnvFor(p, {}, { NODE_ENV: 'production' }).npm_config_include, 'dev');
   assert.equal(env.ASTRO_BASE, '/x/');
   assert.equal(env.PATH, '/usr/bin');
   assert.deepEqual(HOME.deploy.env, {});

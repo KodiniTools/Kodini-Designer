@@ -510,6 +510,10 @@ export function loadActiveProfile(env = process.env) {
 export function processEnvFor(p, extra = {}, base = process.env) {
   return {
     ...base,
+    // Der Dienst läuft mit NODE_ENV=production; damit würde `npm ci` in
+    // Build-/Deploy-Skripten die devDependencies (vite, vue-tsc, astro …)
+    // weglassen und der Build scheitert. Site-Builds brauchen sie immer.
+    npm_config_include: 'dev',
     REPO_DIR: p.repo.dir,
     WEBROOT: p.webroot,
     UPLOADS_DIR: p.uploads.dir,
