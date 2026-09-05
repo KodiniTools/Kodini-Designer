@@ -107,5 +107,11 @@ Schreibende Aufrufe verlangen den Header `x-kodini-admin: 1` (CSRF-Schutz).
 - **Profil-Umschalter:** mehrere Profile je Dienst, Wahl pro Browser (Cookie),
   Status/Vorschau/Uploads je Profil getrennt. Der Medien-Zwischenspeicher im
   Browser (IndexedDB) ist profilübergreifend.
+- **Tab „Felder“:** manifestgesteuert für Websites ohne Home-Vertrag
+  (`profiles/README.md`): Text-Slots mit Text je Sprache und eigenem Design
+  (Schrift aus dem Fonts-Ordner, Größe, Gewicht, Buchstabenabstand,
+  Schreibweise, Farbe Hell/Dunkel), einfache Felder (Titel/Meta, App-Farben) und
+  eine sticky Live-Vorschau aus einer HTML-Vorlage des Profils. Erste
+  Anbindung: Video-Cutter.
 - **Nächste Schritte:** Live-Vorschau der echten Website im iframe (postMessage
   statt Vorschau-Build), globales Marken-Theme über mehrere Profile.

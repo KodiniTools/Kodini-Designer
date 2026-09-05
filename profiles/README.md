@@ -34,6 +34,25 @@ Relative Pfade beziehen sich auf das Repo. Die Umgebungsvariablen `REPO_DIR`,
 | `fields`                                    | Generischer Tab „Felder“ für Websites ohne Home-Vertrag: `file` (Schlüssel in `content.files`) + `groups[]` mit `fields[]` (`path`, `label`, `type` text/textarea/color/number/select/toggle, `placeholder` = Standardwert, `hint`, `maxLength`, `min`/`max`/`step`/`unit`, `options`). Leerer Wert = Standard der Website. Mit `fields` ist `content.files.media` optional; das Frontend zeigt dann nur den Tab „Felder“. |
 | `tabs`                                      | Reihenfolge/Auswahl der Tabs (heute informativ; das Frontend rendert noch feste Tabs)                                                                                                                                                                                                                                                                                                                                      |
 
+## Generischer Tab „Felder“ (`fields`)
+
+Für Websites ohne Home-Vertrag (Tool-Apps). Der Tab wird komplett aus dem
+Manifest gerendert, die Werte liegen in der Datei `fields.file` (Schlüssel aus
+`content.files`). Leerer Wert = Standard der Website.
+
+| Feld                  | Bedeutung                                                                                                                                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fields.file`         | Schlüssel der JSON-Datei in `content.files`                                                                                                                                                                                                                                                                   |
+| `fields.langs`        | Sprachen der Text-Slots (Default `languages`)                                                                                                                                                                                                                                                                 |
+| `fields.slots[]`      | Text-Slots: `key`, `label`, `type` (`text`/`textarea`), `textPath` mit `{lang}`, `stylePath`, `placeholder` (String oder je Sprache), `maxLength`, `defaultSize` (px, nur Anzeige). Je Slot entstehen Text je Sprache und Design-Felder `<stylePath>.font/size/weight/spacing/transform/colorLight/colorDark` |
+| `fields.groups[]`     | Einfache Felder: `title` + `fields[]` mit `path`, `label`, `type` (`text`, `textarea`, `color`, `number`, `select`, `toggle`, `font`), `placeholder`, `hint`, `min/max/step/unit`, `options`, `maxLength`                                                                                                     |
+| `fields.preview.file` | HTML-Vorlage im Profilordner für die sticky Live-Vorschau; `[data-slot="<key>"]`-Elemente werden mit Text und Design gefüllt, `data-theme` (light/dark) wird auf den Wurzelknoten gesetzt. Selektoren mit eigener Klasse eingrenzen                                                                           |
+| `fields.preview.vars` | CSS-Variable → Feldpfad (`"--x": "theme.x"` oder `{ "light": …, "dark": … }`); Standard = `placeholder` des Feldes                                                                                                                                                                                            |
+
+Beispiel: `profiles/video-cutter/` (Manifest + `preview.html`). Die Website liest
+die Datei beim Build (Video-Cutter: `src/content/site.ts`, Slot-Design über
+`[data-slot]` und `@font-face` aus `/fonts/`).
+
 ## Profil `kodinitools-home`
 
 Erstes Profil, entspricht exakt dem bisherigen Verhalten des in
