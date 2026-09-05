@@ -24,7 +24,7 @@ export const config = {
   sessionSecret: process.env.SESSION_SECRET || '',
   sessionTtlHours: int('SESSION_TTL_HOURS', 8),
   totpSecret: process.env.ADMIN_TOTP_SECRET || '', // optional
-  // Cookie-Pfad: in Produktion /admin (nginx), lokal ggf. / für Tests.
+  // Cookie-Pfad = nginx-Präfix des Dienstes (/admin bzw. /designer), lokal ggf. /.
   cookiePath: process.env.COOKIE_PATH || '/admin',
 
   // Pfade (aus dem Profil, ggf. per Umgebung überstimmt)

@@ -95,6 +95,7 @@
       }
     },
     "codeUpdate": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
+    "stateDir": { "type": "string" },
     "tabs": { "type": "array", "items": { "type": "string" } }
   }
 }

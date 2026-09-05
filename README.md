@@ -59,31 +59,34 @@ npm run format:check
 ## Betrieb
 
 Siehe [`deploy/README.md`](deploy/README.md): Der Designer läuft unter
-`/opt/kodini/designer` als Dienst `kodini-designer` und ersetzt den bisherigen
-`kodini-admin` aus dem Website-Repo (gleicher Port, gleiche nginx-Blöcke,
-gleiche `.env` plus `PROFILE=kodinitools-home`).
+`/opt/kodini/designer` als Dienst `kodini-designer` **parallel** zum bisherigen
+`kodini-admin` (eigener Port 9030, nginx-Pfad `/designer`, eigene Status- und
+Vorschau-Ordner; geteilte `.env` plus `designer.env`). Der alte Dienst bleibt
+unverändert.
 
 ## Konfiguration
 
 Pflicht: `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`. Profil: `PROFILE` (Default
 `kodinitools-home`) oder `PROFILE_FILE`. Optional (überstimmen das Profil):
-`REPO_DIR`, `WEBROOT`, `UPLOADS_DIR`, `GIT_BRANCH`, `GIT_REMOTE`. Weitere:
+`REPO_DIR`, `WEBROOT`, `UPLOADS_DIR`, `GIT_BRANCH`, `GIT_REMOTE`, `STATE_DIR`,
+`PREVIEW_BASE`, `PREVIEW_DIR`. Weitere:
 `PORT`, `BIND_HOST`, `COOKIE_PATH`, `MAX_UPLOAD_MB`, `SESSION_TTL_HOURS`,
-`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`. Vorlage: `deploy/.env.example`.
+`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`. Vorlagen: `deploy/.env.example`,
+`deploy/designer.env.example`.
 
 ## API
 
-| Methode    | Pfad                                             | Auth | Zweck                                                                                                  |
-| ---------- | ------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------ |
-| POST       | `/api/login`, `/api/logout`                      | –    | Anmelden / Abmelden                                                                                    |
-| GET        | `/api/session`                                   | –    | `{ authenticated, serverCodeChanged, profile }` (`profile` = id, name, kind, siteUrl, languages, tabs) |
-| GET / PUT  | `/api/content`                                   | ✓    | Content laden / validiert speichern                                                                    |
-| POST       | `/api/upload`                                    | ✓    | Datei hochladen (Raw-Body, `X-Filename`, `X-Lang`)                                                     |
-| GET        | `/api/uploads`, `/api/fonts`, `/api/fontawesome` | ✓    | Listen                                                                                                 |
-| POST       | `/api/uploads/delete`, `/api/uploads/move`       | ✓    | Upload löschen / verschieben                                                                           |
-| POST / GET | `/api/preview`, `/api/preview/status`            | ✓    | Vorschau bauen / Status                                                                                |
-| POST / GET | `/api/publish`, `/api/publish/status`            | ✓    | Veröffentlichen / Status                                                                               |
-| GET        | `/preview/…`                                     | ✓    | Ausgelieferte Vorschau                                                                                 |
+| Methode    | Pfad                                             | Auth | Zweck                                                                                                               |
+| ---------- | ------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------- |
+| POST       | `/api/login`, `/api/logout`                      | –    | Anmelden / Abmelden                                                                                                 |
+| GET        | `/api/session`                                   | –    | `{ authenticated, serverCodeChanged, profile }` (`profile` = id, name, kind, siteUrl, languages, tabs, previewBase) |
+| GET / PUT  | `/api/content`                                   | ✓    | Content laden / validiert speichern                                                                                 |
+| POST       | `/api/upload`                                    | ✓    | Datei hochladen (Raw-Body, `X-Filename`, `X-Lang`)                                                                  |
+| GET        | `/api/uploads`, `/api/fonts`, `/api/fontawesome` | ✓    | Listen                                                                                                              |
+| POST       | `/api/uploads/delete`, `/api/uploads/move`       | ✓    | Upload löschen / verschieben                                                                                        |
+| POST / GET | `/api/preview`, `/api/preview/status`            | ✓    | Vorschau bauen / Status                                                                                             |
+| POST / GET | `/api/publish`, `/api/publish/status`            | ✓    | Veröffentlichen / Status                                                                                            |
+| GET        | `/preview/…`                                     | ✓    | Ausgelieferte Vorschau                                                                                              |
 
 Schreibende Aufrufe verlangen den Header `x-kodini-admin: 1` (CSRF-Schutz).
 

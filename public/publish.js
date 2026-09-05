@@ -444,7 +444,9 @@ function codeUpdateNote(s) {
 // Nach erfolgreichem Vorschau-Build: Auswahl beider Sprachen anbieten
 // (die DE- und die EN-Startseite haben getrennte Medien/Inhalte).
 function showPreviewChooser(win, s) {
-  const base = '/admin/preview/';
+  // Vorschau liegt relativ zum Auslieferungsort (z. B. /admin/preview/ oder
+  // /designer/preview/) – wie die API-Basis in core.js.
+  const base = new URL('preview/', document.baseURI).pathname;
   if (!win) {
     // Popup wurde blockiert -> beide Seiten direkt öffnen.
     window.open(base, '_blank');

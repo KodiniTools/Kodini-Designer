@@ -1,4 +1,5 @@
-# systemd-Unit für den Kodini Designer (eigenständiger Admin-Dienst).
+# systemd-Unit für den Kodini Designer – Parallelbetrieb NEBEN dem bestehenden
+# Dienst kodini-admin (der bleibt unverändert auf Port 9020 unter /admin).
 #
 # Installation:
 #   sudo cp deploy/kodini-designer.service /etc/systemd/system/kodini-designer.service
@@ -6,15 +7,17 @@
 #   sudo systemctl enable --now kodini-designer
 #   systemctl status kodini-designer
 #
-# Der Dienst lauscht nur lokal auf 127.0.0.1:9020 und wird von nginx unter
-# /admin bzw. /admin/api reverse-proxied (siehe deploy/nginx-designer.conf).
-# Er ersetzt den bisherigen Dienst kodini-admin aus dem Website-Repo
-# (gleicher Port -> vorher: sudo systemctl disable --now kodini-admin).
+# Der Dienst lauscht nur lokal auf 127.0.0.1:9030 und wird von nginx unter
+# /designer bzw. /designer/api reverse-proxied (siehe deploy/nginx-designer.conf).
+#
+# Konfiguration: erst die gemeinsame /opt/kodini/.env (Secrets, Pfade – geteilt
+# mit kodini-admin), dann /opt/kodini/designer.env (überstimmt: PORT, PROFILE,
+# COOKIE_PATH, STATE_DIR, PREVIEW_BASE, PREVIEW_DIR). Vorlage: deploy/designer.env.example
 #
 # Voraussetzungen:
 #   - Designer-Klon unter /opt/kodini/designer (WorkingDirectory)
-#   - Website-Klon laut Profil (profiles/<id>/profile.json → repo.dir, z. B. /opt/kodini/repo)
-#   - /opt/kodini/.env mit Secrets + PROFILE=<id> (chmod 600)
+#   - Website-Klon laut Profil (repo.dir, z. B. /opt/kodini/repo)
+#   - Ordner /opt/kodini/designer-state und /opt/kodini/designer-preview (Owner = Service-User)
 
 [Unit]
 Description=Kodini Designer (Website-Editor + Vorschau/Veröffentlichen)
@@ -27,8 +30,8 @@ Group=www-data
 WorkingDirectory=/opt/kodini/designer
 
 EnvironmentFile=/opt/kodini/.env
+EnvironmentFile=/opt/kodini/designer.env
 Environment=NODE_ENV=production
-Environment=PORT=9020
 
 ExecStart=/usr/bin/node server/index.mjs
 
@@ -43,8 +46,9 @@ ProtectHome=true
 # Schreibzugriff nur auf die tatsächlich benötigten Pfade:
 #   - Website-Repo(s) der Profile : Content schreiben, git commit/push, Build
 #   - Webroot                     : deploy.sh spiegelt dist/ hierher (rsync)
+#   - designer-state/-preview     : Vorgangs-Status + Vorschau-Build des Designers
 # Weitere Profile -> deren repo.dir hier ergänzen.
-ReadWritePaths=/opt/kodini/repo /var/www/kodinitools.com
+ReadWritePaths=/opt/kodini/repo /var/www/kodinitools.com /opt/kodini/designer-state /opt/kodini/designer-preview
 
 [Install]
 WantedBy=multi-user.target
