@@ -91,6 +91,7 @@
       "required": ["command"],
       "properties": {
         "command": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "env": { "type": "object", "additionalProperties": { "type": "string" } },
         "timeoutMinutes": { "type": "number", "exclusiveMinimum": 0 }
       }
     },

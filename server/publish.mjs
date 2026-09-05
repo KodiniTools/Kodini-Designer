@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { readFile, copyFile, mkdir, stat } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { config, contentPaths } from './config.mjs';
+import { processEnvFor } from './profile.mjs';
 import { restartIfServerCodeChanged, persistState, restoreState } from './codeupdate.mjs';
 import { runStreaming } from './util.mjs';
 
@@ -205,9 +206,10 @@ function createPublishJob(p) {
     const [deployCmd, ...deployArgs] = p.deploy.command;
     log(`${p.deploy.command.join(' ')} (Ausgabe live)`);
     const deployScript = deployCmd.startsWith('./') ? resolve(p.repo.dir, deployCmd) : deployCmd;
+    // Umgebung des Profils (WEBROOT/REPO_DIR/BRANCH …), nicht die gemeinsame .env.
     await runStreaming(deployScript, deployArgs, {
       cwd: p.repo.dir,
-      env: process.env,
+      env: processEnvFor(p, p.deploy.env),
       timeoutMs: p.deploy.timeoutMinutes * 60 * 1000,
       onLine: (line) => log(line),
     });

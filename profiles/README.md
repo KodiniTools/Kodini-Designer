@@ -13,23 +13,23 @@ Relative Pfade beziehen sich auf das Repo. Die Umgebungsvariablen `REPO_DIR`,
 `PREVIEW_DIR` überstimmen das Manifest (so bleibt eine bestehende `.env` gültig,
 und ein Parallelbetrieb neben `kodini-admin` braucht kein zweites Profil).
 
-| Feld                                        | Bedeutung                                                                                                                                      |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`, `name`, `kind`                        | Kennung (a-z, 0-9, -), Anzeigename, Site-Typ (`astro-site`, `vite-spa`, `static`)                                                              |
-| `siteUrl`, `languages`                      | Öffentliche URL (Info), bearbeitete Sprachen                                                                                                   |
-| `repo.dir/branch/remote`                    | Website-Klon auf dem Server, Zielbranch für Veröffentlichungen                                                                                 |
-| `webroot`                                   | nginx-Webroot (Ziel von `deploy.sh`; Basis für Uploads/Fonts)                                                                                  |
-| `content.dir`, `content.files`              | Content-Ordner und die editierbaren JSON-Dateien (`media` ist Pflicht; heutige Tabs erwarten zusätzlich `overridesDe/En`, `tickerDe/En`)       |
-| `content.locales`                           | Standard-Texte je Sprache (nur lesend, Fallback für leere Overrides)                                                                           |
-| `content.commitPaths`                       | Was beim Veröffentlichen mit `git add` erfasst wird                                                                                            |
-| `uploads.dir/repoDir/urlPrefix/gitMaxBytes` | Upload-Ziel im Webroot, optionale Git-Kopie im Repo, öffentlicher URL-Präfix, Größengrenze für die Git-Kopie                                   |
-| `fonts.dirs/urlPrefix`, `fontawesome.dirs`  | Wo Schriften/Icons gesucht werden (erster Treffer je Dateiname gewinnt)                                                                        |
-| `build.command/env/timeoutMinutes`          | Build für die Vorschau (im Repo ausgeführt)                                                                                                    |
-| `preview.base/outDir/env`                   | Öffentlicher Pfad + Ausgabeordner der Vorschau; `env.base`/`env.outDir` = Namen der Umgebungsvariablen, über die der Build diese Werte bekommt |
-| `deploy.command/timeoutMinutes`             | Deploy nach dem Push (`./…` = relativ zum Repo)                                                                                                |
-| `codeUpdate.enabled`                        | Vor der Vorschau `origin/<branch>` per fast-forward holen                                                                                      |
-| `stateDir`                                  | Ordner für den persistierten Vorgangs-Status (Default `{repo}/.kodini-admin`)                                                                  |
-| `tabs`                                      | Reihenfolge/Auswahl der Tabs (heute informativ; das Frontend rendert noch feste Tabs)                                                          |
+| Feld                                        | Bedeutung                                                                                                                                             |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`, `name`, `kind`                        | Kennung (a-z, 0-9, -), Anzeigename, Site-Typ (`astro-site`, `vite-spa`, `static`)                                                                     |
+| `siteUrl`, `languages`                      | Öffentliche URL (Info), bearbeitete Sprachen                                                                                                          |
+| `repo.dir/branch/remote`                    | Website-Klon auf dem Server, Zielbranch für Veröffentlichungen                                                                                        |
+| `webroot`                                   | nginx-Webroot (Ziel von `deploy.sh`; Basis für Uploads/Fonts)                                                                                         |
+| `content.dir`, `content.files`              | Content-Ordner und die editierbaren JSON-Dateien (`media` ist Pflicht; heutige Tabs erwarten zusätzlich `overridesDe/En`, `tickerDe/En`)              |
+| `content.locales`                           | Standard-Texte je Sprache (nur lesend, Fallback für leere Overrides)                                                                                  |
+| `content.commitPaths`                       | Was beim Veröffentlichen mit `git add` erfasst wird                                                                                                   |
+| `uploads.dir/repoDir/urlPrefix/gitMaxBytes` | Upload-Ziel im Webroot, optionale Git-Kopie im Repo, öffentlicher URL-Präfix, Größengrenze für die Git-Kopie                                          |
+| `fonts.dirs/urlPrefix`, `fontawesome.dirs`  | Wo Schriften/Icons gesucht werden (erster Treffer je Dateiname gewinnt)                                                                               |
+| `build.command/env/timeoutMinutes`          | Build für die Vorschau (im Repo ausgeführt)                                                                                                           |
+| `preview.base/outDir/env`                   | Öffentlicher Pfad + Ausgabeordner der Vorschau; `env.base`/`env.outDir` = Namen der Umgebungsvariablen, über die der Build diese Werte bekommt        |
+| `deploy.command/env/timeoutMinutes`         | Deploy nach dem Push (`./…` = relativ zum Repo); Build und Deploy bekommen `REPO_DIR`, `WEBROOT`, `UPLOADS_DIR`, `BRANCH` des Profils in die Umgebung |
+| `codeUpdate.enabled`                        | Vor der Vorschau `origin/<branch>` per fast-forward holen                                                                                             |
+| `stateDir`                                  | Ordner für den persistierten Vorgangs-Status (Default `{repo}/.kodini-admin`)                                                                         |
+| `tabs`                                      | Reihenfolge/Auswahl der Tabs (heute informativ; das Frontend rendert noch feste Tabs)                                                                 |
 
 ## Profil `kodinitools-home`
 
