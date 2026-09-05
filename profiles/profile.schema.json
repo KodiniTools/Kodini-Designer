@@ -97,6 +97,54 @@
     },
     "codeUpdate": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
     "stateDir": { "type": "string" },
+    "fields": {
+      "type": "object",
+      "required": ["file", "groups"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Schlüssel in content.files (JSON-Datei der Website)"
+        },
+        "groups": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["title", "fields"],
+            "properties": {
+              "title": { "type": "string" },
+              "fields": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["path", "label"],
+                  "properties": {
+                    "path": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$" },
+                    "label": { "type": "string" },
+                    "type": {
+                      "enum": ["text", "textarea", "color", "number", "select", "toggle"],
+                      "default": "text"
+                    },
+                    "placeholder": {
+                      "type": "string",
+                      "description": "Standardwert der Website (Anzeige)"
+                    },
+                    "hint": { "type": "string" },
+                    "maxLength": { "type": "integer", "minimum": 1 },
+                    "min": { "type": "number" },
+                    "max": { "type": "number" },
+                    "step": { "type": "number" },
+                    "unit": { "type": "string" },
+                    "options": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "tabs": { "type": "array", "items": { "type": "string" } }
   }
 }

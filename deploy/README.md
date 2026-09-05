@@ -72,6 +72,25 @@ Wenn der Designer den Admin ersetzen soll: in `designer.env` `PORT=9020`,
 `sudo systemctl disable --now kodini-admin && sudo systemctl restart kodini-designer`.
 Die vorhandenen `/admin`-nginx-Blöcke zeigen dann auf den Designer.
 
+## Video-Cutter anbinden (Profil `video-cutter`)
+
+```bash
+U=$(stat -c %U /var/www/kodinitools.com)
+SSH_CMD="ssh -i /opt/kodini/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=/opt/kodini/known_hosts -o StrictHostKeyChecking=accept-new"
+sudo install -d -o "$U" -g "$U" /opt/kodini/sites
+sudo -u "$U" GIT_SSH_COMMAND="$SSH_CMD" git clone -b main git@github.com:KodiniTools/Video-Cutter.git /opt/kodini/sites/video-cutter
+sudo -u "$U" git -C /opt/kodini/sites/video-cutter config core.sshCommand "$SSH_CMD"
+sudo sed -i "s#^ReadWritePaths=.*#& /opt/kodini/sites/video-cutter#" /etc/systemd/system/kodini-designer.service
+sudo sed -i "s#^PROFILES=.*#&,video-cutter#" /opt/kodini/designer.env
+sudo systemctl daemon-reload && sudo systemctl restart kodini-designer
+```
+
+Voraussetzungen: Deploy-Key mit Schreibrecht beim Video-Cutter-Repo (der
+Designer committet und pusht), Webroot `/var/www/kodinitools.com/video-cutter`
+gehört dem Dienst-User (dann deployt `deploy/deploy.sh` ohne sudo; das Backend
+wird mit `SKIP_API=1` nicht angefasst). Im Designer erscheint das Profil im
+Umschalter mit dem Tab „Felder“.
+
 ## Weitere Profile
 
 Pro Website ein Ordner `profiles/<id>/profile.json` (siehe `profiles/README.md`),

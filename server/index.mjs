@@ -24,6 +24,7 @@ import {
 } from './auth.mjs';
 import { readJson, readBody, sendJson, sendText, clientIp, csrfOk } from './util.mjs';
 import { loadContent, saveContent } from './content.mjs';
+import { loadFields, saveFields } from './fields.mjs';
 import { saveUpload, listUploads, deleteUpload, moveUpload } from './uploads.mjs';
 import { listFonts } from './fonts.mjs';
 import { listFontAwesome } from './fontawesome.mjs';
@@ -215,13 +216,41 @@ async function handleApi(req, res, path) {
   // Ab hier: Auth erforderlich
   if (path === '/api/content' && method === 'GET') {
     if (!requireAuth(req, res)) return;
+    if (!prof.content.files.media)
+      return sendJson(res, 400, { error: 'Dieses Profil hat keine Content-Tabs (nur Felder).' });
     const content = await loadContent(prof);
     return sendJson(res, 200, content);
+  }
+
+  // Generischer Tab „Felder“ (Profil-Manifest fields): Werte lesen/speichern.
+  if (path === '/api/fields' && method === 'GET') {
+    if (!requireAuth(req, res)) return;
+    if (!prof.fields) return sendJson(res, 400, { error: 'Dieses Profil hat keine Felder.' });
+    return sendJson(res, 200, { groups: prof.fields.groups, values: await loadFields(prof) });
+  }
+  if (path === '/api/fields' && method === 'PUT') {
+    if (!requireAuth(req, res)) return;
+    if (!requireCsrf(req, res)) return;
+    if (!prof.fields) return sendJson(res, 400, { error: 'Dieses Profil hat keine Felder.' });
+    let body;
+    try {
+      body = await readJson(req, 1024 * 1024);
+    } catch {
+      return sendJson(res, 400, { error: 'Ungültiger Body' });
+    }
+    try {
+      const values = await saveFields(prof, body.values);
+      return sendJson(res, 200, { ok: true, values });
+    } catch (e) {
+      return sendJson(res, 400, { error: e.message });
+    }
   }
 
   if (path === '/api/content' && method === 'PUT') {
     if (!requireAuth(req, res)) return;
     if (!requireCsrf(req, res)) return;
+    if (!prof.content.files.media)
+      return sendJson(res, 400, { error: 'Dieses Profil hat keine Content-Tabs (nur Felder).' });
     let body;
     try {
       body = await readJson(req, 4 * 1024 * 1024);
