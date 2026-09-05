@@ -70,6 +70,22 @@
         "--vc-text": {
           "light": "theme.light.text",
           "dark": "theme.dark.text"
+        },
+        "--vc-bg-image": {
+          "path": "theme.bgImage",
+          "kind": "image"
+        },
+        "--vc-bg-image-opacity": {
+          "path": "theme.bgImageOpacity",
+          "kind": "number"
+        },
+        "--vc-bg-image-darken": {
+          "path": "theme.bgImageDarken",
+          "kind": "number"
+        },
+        "--vc-bg-image-blur": {
+          "path": "theme.bgImageBlur",
+          "kind": "number"
         }
       }
     },
@@ -203,6 +219,44 @@
             "type": "color",
             "label": "Dunkel – Text",
             "placeholder": "#e6edf3"
+          }
+        ]
+      },
+      {
+        "title": "Hintergrundbild der App",
+        "fields": [
+          {
+            "path": "theme.bgImage",
+            "type": "image",
+            "label": "Hintergrundbild",
+            "hint": "Empfehlung: 1920×1080 px, WebP, unter 300 KB. Liegt fest hinter der gesamten App (beide Farbschemata)."
+          },
+          {
+            "path": "theme.bgImageOpacity",
+            "type": "number",
+            "label": "Deckkraft (%)",
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": "100"
+          },
+          {
+            "path": "theme.bgImageDarken",
+            "type": "number",
+            "label": "Abdunkeln (%)",
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": "0"
+          },
+          {
+            "path": "theme.bgImageBlur",
+            "type": "number",
+            "label": "Weichzeichner (px)",
+            "min": 0,
+            "max": 40,
+            "step": 1,
+            "placeholder": "0"
           }
         ]
       }

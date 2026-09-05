@@ -2,7 +2,7 @@
 // Browser-Vorschau (Build ohne Deploy). Enthält den Status-Tab, das Polling und
 // die Verdrahtung der Kopf-Buttons (Speichern/Vorschau/Veröffentlichen).
 
-import { $, esc, api, toast, mediaGet } from './core.js';
+import { $, esc, api, toast, mediaGet, mediaPut } from './core.js';
 import {
   state,
   MEDIA_LANGS,
@@ -118,13 +118,56 @@ function cleanTicker(t) {
   };
 }
 
+// Generischer Modus: lokal gestagte Bilder (Felder vom Typ image, Wert
+// 'staged:<id>') in den gemeinsamen Upload-Ordner laden und den Wert durch die
+// Server-URL ersetzen. Wirft bei Upload-Fehlern.
+async function uploadStagedFields() {
+  const gen = state.generic;
+  if (!gen) return false;
+  let changed = false;
+  const fields = (gen.groups || []).flatMap((x) => x.fields || []);
+  for (const f of fields) {
+    if (f.type !== 'image') continue;
+    const v = gen.values[f.path];
+    if (typeof v !== 'string' || !v.startsWith('staged:')) continue;
+    const item = await mediaGet(v.slice(7));
+    if (!item) throw new Error(`${f.label}: lokales Medium nicht gefunden`);
+    if (!item.publishedUrl) {
+      const r = await api('/upload', {
+        method: 'POST',
+        raw: item.blob,
+        headers: {
+          'X-Filename': item.name,
+          'X-Lang': '',
+          'Content-Type': item.type || 'application/octet-stream',
+        },
+      });
+      if (!r.ok) throw new Error(`Upload ${item.name}: ${r.data?.error || r.status}`);
+      item.publishedUrl = r.data.url;
+      await mediaPut(item);
+    }
+    gen.values[f.path] = item.publishedUrl;
+    changed = true;
+  }
+  if (changed) await loadServerFiles();
+  return changed;
+}
+
 async function saveDraft() {
   // Generischer Modus (Tab „Felder“): nur die Feldwerte des Profils speichern.
   if (state.generic) {
+    let uploaded;
+    try {
+      uploaded = await uploadStagedFields();
+    } catch (e) {
+      toast('Speichern fehlgeschlagen: ' + e.message);
+      return false;
+    }
     const rf = await api('/fields', { method: 'PUT', body: { values: state.generic.values } });
     if (rf.ok) {
       state.generic.values = rf.data.values || state.generic.values;
       markSaved();
+      if (uploaded) renderMain(); // Bildfelder zeigen jetzt die Server-URL
       return true;
     }
     toast('Speichern fehlgeschlagen: ' + (rf.data?.error || rf.status));

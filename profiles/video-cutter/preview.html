@@ -13,8 +13,15 @@
     --vc-text-dim: #667085;
     --vc-border: #d5dae1;
     --vc-track-bg: #e6e9ee;
+    --vc-bg-image: none;
+    --vc-bg-image-opacity: 100;
+    --vc-bg-image-darken: 0;
+    --vc-bg-image-blur: 0;
     color: var(--vc-text);
     background: var(--vc-bg);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
     font-family:
       system-ui,
       -apple-system,
@@ -38,6 +45,17 @@
     --vc-text-dim: #9aa4b2;
     --vc-border: #2c333d;
     --vc-track-bg: #262d38;
+  }
+  /* Hintergrundbild wie in der App (body::before): Deckkraft, Abdunkelung, Weichzeichner */
+  .kdp .kdp-bg {
+    position: absolute;
+    inset: calc(var(--vc-bg-image-blur) * -2px);
+    z-index: -1;
+    pointer-events: none;
+    background: var(--vc-bg-image) center / cover no-repeat;
+    opacity: calc(var(--vc-bg-image-opacity) / 100);
+    filter: blur(calc(var(--vc-bg-image-blur) * 1px))
+      brightness(calc(1 - var(--vc-bg-image-darken) / 100));
   }
   .kdp .topbar {
     display: flex;
@@ -147,6 +165,7 @@
   }
 </style>
 <div class="kdp" data-theme="light">
+  <div class="kdp-bg" aria-hidden="true"></div>
   <div class="topbar">
     <span class="logo" aria-hidden="true">✂</span>
     <div>

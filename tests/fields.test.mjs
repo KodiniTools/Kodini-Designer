@@ -27,7 +27,7 @@ const VC = loadProfileFile(profileFile('video-cutter'));
 test('video-cutter: Manifest mit Feldern lädt, ohne media-Datei', () => {
   assert.equal(VC.kind, 'vite-spa');
   assert.equal(VC.fields.file, 'site');
-  assert.equal(VC.fields.groups.length, 2);
+  assert.equal(VC.fields.groups.length, 3);
   assert.equal(VC.fields.slots.length, 5);
   assert.deepEqual(VC.fields.langs, ['de', 'en']);
   assert.equal(VC.fields.preview.file, 'preview.html');
@@ -35,9 +35,21 @@ test('video-cutter: Manifest mit Feldern lädt, ohne media-Datei', () => {
     path: '',
     light: 'theme.light.bg',
     dark: 'theme.dark.bg',
+    kind: 'color',
+    unit: '',
   });
-  // 5 Slots × (2 Texte + 7 Design) + 10 Gruppenfelder
-  assert.equal(flatFields(VC.fields).length, 5 * 9 + 10);
+  assert.deepEqual(VC.fields.preview.vars['--vc-bg-image'], {
+    path: 'theme.bgImage',
+    light: '',
+    dark: '',
+    kind: 'image',
+    unit: '',
+  });
+  assert.equal(VC.fields.preview.vars['--vc-bg-image-blur'].kind, 'number');
+  assert.equal(VC.fields.preview.vars['--vc-accent'].kind, 'color');
+  // 5 Slots × (2 Texte + 7 Design) + 14 Gruppenfelder
+  assert.equal(flatFields(VC.fields).length, 5 * 9 + 14);
+  assert.equal(flatFields(VC.fields).find((f) => f.path === 'theme.bgImage').type, 'image');
   const paths = flatFields(VC.fields).map((f) => f.path);
   assert.ok(paths.includes('texts.de.app.title') && paths.includes('styles.app.title.colorDark'));
   assert.equal(flatFields(VC.fields).find((f) => f.path === 'styles.app.title.font').type, 'font');
@@ -46,7 +58,7 @@ test('video-cutter: Manifest mit Feldern lädt, ohne media-Datei', () => {
   assert.deepEqual(VC.deploy.env.SKIP_API, '1');
   const info = publicProfileInfo(resolveProfile(VC, {}));
   assert.equal(info.contentTabs, false);
-  assert.equal(info.fields.length, 2);
+  assert.equal(info.fields.length, 3);
   assert.deepEqual(info.slots, ['app.title', 'app.subtitle', 'drop.title', 'drop.hint', 'footer']);
   assert.equal(
     publicProfileInfo(resolveProfile(loadProfileFile(profileFile('kodinitools-home')), {}))
@@ -98,7 +110,22 @@ test('validateProfile: Feld-Manifest wird geprüft', () => {
   assert.deepEqual(withSlot.fields.slots[0].placeholder, { de: 'Hallo', en: 'Hallo' });
   assert.equal(withSlot.fields.slots[0].defaultSize, 18);
   assert.equal(withSlot.fields.groups.length, 0);
-  assert.deepEqual(withSlot.fields.preview.vars['--x'], { path: 'theme.x', light: '', dark: '' });
+  assert.deepEqual(withSlot.fields.preview.vars['--x'], {
+    path: 'theme.x',
+    light: '',
+    dark: '',
+    kind: 'color',
+    unit: '',
+  });
+  assert.throws(
+    () =>
+      withFields({
+        file: 'site',
+        slots: base.fields.slots,
+        preview: { file: 'p.html', vars: { '--x': { path: 'theme.x', kind: 'video' } } },
+      }),
+    /kind „video“/,
+  );
   assert.equal(flatFields(withSlot.fields).length, 9);
   assert.throws(
     () =>
@@ -181,6 +208,12 @@ test('normalizeFieldValue: Typen, Grenzen, leer = Standard', () => {
   assert.equal(normalizeFieldValue(f('number'), '1.5'), 1.5);
   assert.equal(normalizeFieldValue(f('font'), 'Supreme-Bold.woff2'), 'Supreme-Bold.woff2');
   assert.throws(() => normalizeFieldValue(f('font'), '../x.woff2'), /Schriftdatei/);
+  assert.equal(normalizeFieldValue(f('image'), '/uploads/bg.webp'), '/uploads/bg.webp');
+  assert.equal(normalizeFieldValue(f('image'), 'https://x.de/a.jpg'), 'https://x.de/a.jpg');
+  assert.equal(normalizeFieldValue(f('image'), ''), '');
+  assert.throws(() => normalizeFieldValue(f('image'), 'staged:m1'), /nicht hochgeladen/);
+  assert.throws(() => normalizeFieldValue(f('image'), 'bg.webp'), /Bild-URL/);
+  assert.throws(() => normalizeFieldValue(f('image'), '/x") url(evil'), /Bild-URL/);
   assert.throws(() => normalizeFieldValue(f('number'), '11'), /zwischen/);
   assert.equal(normalizeFieldValue(f('select'), 'a'), 'a');
   assert.throws(() => normalizeFieldValue(f('select'), 'c'), /unbekannte Auswahl/);

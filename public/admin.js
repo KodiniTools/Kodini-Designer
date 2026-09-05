@@ -169,6 +169,8 @@ async function boot() {
       values: r.data.values || {},
     };
     state.nav = { section: 'fields', sub: '' };
+    state.stagedItems = await mediaAll(); // Bildfelder: Zwischenspeicher + Mediathek
+    await loadServerFiles();
     await loadFonts(); // Schriftwahl der Slots (Fonts-Ordner des Profils)
   } else {
     state.generic = null;

@@ -171,7 +171,11 @@ export const FIELD_TYPES = new Set([
   'select',
   'toggle',
   'font',
+  'image',
 ]);
+// Art einer Vorschau-Variable: bestimmt, wie der Feldwert in CSS übersetzt wird.
+// color → Farbwert (Default), image → url("…")/none, number → Zahl (+unit), raw → 1:1.
+export const PREVIEW_VAR_KINDS = new Set(['color', 'image', 'number', 'raw']);
 // Design-Eigenschaften eines Text-Slots (Tab „Felder“): feste Menge, wie bei den
 // Text-Slots der Home-Seite. Werden je Slot unter <stylePath>.<name> gespeichert.
 export const SLOT_WEIGHTS = ['', '300', '400', '500', '600', '700', '800'];
@@ -312,14 +316,23 @@ function validateFields(raw, files, languages) {
       for (const [name, v] of Object.entries(raw.preview.vars)) {
         if (!/^--[a-zA-Z0-9-]+$/.test(name))
           fail(`fields.preview.vars: „${name}“ ist keine CSS-Variable`);
-        if (typeof v === 'string') vars[name] = { path: v, light: '', dark: '' };
-        else if (isObj(v) && (v.path || v.light || v.dark))
+        if (typeof v === 'string')
+          vars[name] = { path: v, light: '', dark: '', kind: 'color', unit: '' };
+        else if (isObj(v) && (v.path || v.light || v.dark)) {
+          const kind =
+            str(v.kind, `fields.preview.vars.${name}.kind`, { optional: true }) || 'color';
+          if (!PREVIEW_VAR_KINDS.has(kind))
+            fail(
+              `fields.preview.vars.${name}.kind „${kind}“ (erlaubt: ${[...PREVIEW_VAR_KINDS].join(', ')})`,
+            );
           vars[name] = {
             path: str(v.path, `fields.preview.vars.${name}.path`, { optional: true }),
             light: str(v.light, `fields.preview.vars.${name}.light`, { optional: true }),
             dark: str(v.dark, `fields.preview.vars.${name}.dark`, { optional: true }),
+            kind,
+            unit: str(v.unit, `fields.preview.vars.${name}.unit`, { optional: true }),
           };
-        else fail(`fields.preview.vars.${name}: Pfad oder {light,dark} erwartet`);
+        } else fail(`fields.preview.vars.${name}: Pfad oder {light,dark} erwartet`);
       }
     }
     preview = { file: pfile, vars };
