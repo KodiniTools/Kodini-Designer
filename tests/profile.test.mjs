@@ -81,6 +81,30 @@ test('Parallelbetrieb: STATE_DIR / PREVIEW_BASE / PREVIEW_DIR überstimmen das P
   assert.equal(publicProfileInfo(p).previewBase, '/designer/preview/');
 });
 
+test('Seiten-Overrides (REPO_DIR …) gelten nur für das erste Profil', () => {
+  const map = loadActiveProfiles({
+    PROFILES: 'kodinitools-home,video-cutter',
+    REPO_DIR: '/opt/kodini/repo',
+    WEBROOT: '/var/www/kodinitools.com',
+    UPLOADS_DIR: '/var/www/kodinitools.com/uploads',
+    STATE_DIR: '/opt/kodini/designer-state',
+    PREVIEW_DIR: '/opt/kodini/designer-preview',
+  });
+  const home = map.get('kodinitools-home');
+  const vc = map.get('video-cutter');
+  assert.equal(home.repo.dir, '/opt/kodini/repo');
+  assert.equal(vc.repo.dir, '/opt/kodini/sites/video-cutter');
+  assert.equal(vc.webroot, '/var/www/kodinitools.com');
+  // Dienstbezogene Ordner gelten für beide (je Profil ein Unterordner).
+  assert.equal(home.stateDir, '/opt/kodini/designer-state/kodinitools-home');
+  assert.equal(vc.stateDir, '/opt/kodini/designer-state/video-cutter');
+  assert.equal(vc.preview.outDir, '/opt/kodini/designer-preview/video-cutter');
+  // Umgekehrte Reihenfolge: dann bekommt video-cutter die Overrides.
+  const rev = loadActiveProfiles({ PROFILES: 'video-cutter,kodinitools-home', REPO_DIR: '/x' });
+  assert.equal(rev.get('video-cutter').repo.dir, '/x');
+  assert.equal(rev.get('kodinitools-home').repo.dir, '/opt/kodini/repo');
+});
+
 test('loadActiveProfiles: PROFILES-Liste, Reihenfolge, Duplikate, Fehler', () => {
   const one = loadActiveProfiles({});
   assert.deepEqual([...one.keys()], ['kodinitools-home']);

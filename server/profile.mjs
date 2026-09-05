@@ -231,12 +231,19 @@ export function loadProfileFile(file) {
 
 /**
  * Platzhalter {repo}/{webroot} auflösen und relative Pfade auf das Repo
- * beziehen. env: Overrides (REPO_DIR, WEBROOT, UPLOADS_DIR, GIT_BRANCH, GIT_REMOTE).
- * Ergebnis: Profil mit ausschließlich absoluten Pfaden.
+ * beziehen. Ergebnis: Profil mit ausschließlich absoluten Pfaden.
+ *
+ * env-Overrides gibt es in zwei Gruppen:
+ *  - seitenbezogen (REPO_DIR, WEBROOT, UPLOADS_DIR, GIT_BRANCH, GIT_REMOTE):
+ *    gelten nur, wenn siteEnv true ist – d. h. für das ERSTE (Standard-)Profil,
+ *    damit die gemeinsame .env von kodini-admin weiter passt, ohne dass sie
+ *    jedes weitere Profil auf dasselbe Repo umbiegt.
+ *  - dienstbezogen (STATE_DIR, PREVIEW_DIR, PREVIEW_BASE): gelten für alle Profile.
  */
-export function resolveProfile(p, env = process.env) {
-  const repoDir = resolve(env.REPO_DIR || p.repo.dir);
-  const webroot = resolve(env.WEBROOT || p.webroot);
+export function resolveProfile(p, env = process.env, { siteEnv = true } = {}) {
+  const site = siteEnv ? env : {};
+  const repoDir = resolve(site.REPO_DIR || p.repo.dir);
+  const webroot = resolve(site.WEBROOT || p.webroot);
   const ph = (s) => s.replaceAll('{repo}', repoDir).replaceAll('{webroot}', webroot);
   const abs = (s, base = repoDir) => {
     const r = ph(s);
@@ -251,14 +258,14 @@ export function resolveProfile(p, env = process.env) {
     ...p,
     repo: {
       dir: repoDir,
-      branch: env.GIT_BRANCH || p.repo.branch,
-      remote: env.GIT_REMOTE || p.repo.remote,
+      branch: site.GIT_BRANCH || p.repo.branch,
+      remote: site.GIT_REMOTE || p.repo.remote,
     },
     webroot,
     content: { ...p.content, dir: contentDir, files, locales },
     uploads: {
       ...p.uploads,
-      dir: resolve(env.UPLOADS_DIR || abs(p.uploads.dir)),
+      dir: resolve(site.UPLOADS_DIR || abs(p.uploads.dir)),
       repoDir: p.uploads.repoDir ? abs(p.uploads.repoDir) : '',
     },
     fonts: { ...p.fonts, dirs: p.fonts.dirs.map((d) => abs(d)) },
@@ -288,7 +295,10 @@ export function loadActiveProfiles(env = process.env) {
       .map((s) => s.trim())
       .filter(Boolean);
     if (!ids.length) fail('PROFILES ist leer');
-    list = ids.map((id) => resolveProfile(loadProfileFile(profileFile(id)), env));
+    // Seitenbezogene env-Overrides nur für das erste (Standard-)Profil.
+    list = ids.map((id, i) =>
+      resolveProfile(loadProfileFile(profileFile(id)), env, { siteEnv: i === 0 }),
+    );
   }
   const map = new Map();
   for (const p of list) {
