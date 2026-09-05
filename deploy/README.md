@@ -76,4 +76,13 @@ Die vorhandenen `/admin`-nginx-Blöcke zeigen dann auf den Designer.
 
 Pro Website ein Ordner `profiles/<id>/profile.json` (siehe `profiles/README.md`),
 das Repo auf dem Server auschecken und dessen Pfad in `ReadWritePaths` der Unit
-ergänzen. Aktiv ist immer genau ein Profil (`PROFILE=<id>` in `designer.env`).
+ergänzen. Dann die Kennung in `designer.env` anhängen und neu starten:
+
+```bash
+PROFILES=kodinitools-home,<id>
+sudo systemctl restart kodini-designer
+```
+
+In der Kopfzeile erscheint ein Umschalter; die Wahl gilt pro Browser (Cookie).
+Status und Vorschau liegen je Profil unter `designer-state/<id>` bzw.
+`designer-preview/<id>`.

@@ -9,6 +9,7 @@ import {
   resolveProfile,
   validateProfile,
   loadActiveProfile,
+  loadActiveProfiles,
   publicProfileInfo,
   PROFILES_DIR,
 } from '../server/profile.mjs';
@@ -72,10 +73,30 @@ test('Parallelbetrieb: STATE_DIR / PREVIEW_BASE / PREVIEW_DIR überstimmen das P
     PREVIEW_BASE: '/designer/preview/',
     PREVIEW_DIR: '/opt/kodini/designer-preview',
   });
-  assert.equal(p.stateDir, '/opt/kodini/designer-state');
+  // Gemeinsame Umgebungs-Ordner bekommen je Profil ein Unterverzeichnis.
+  assert.equal(p.stateDir, '/opt/kodini/designer-state/kodinitools-home');
   assert.equal(p.preview.base, '/designer/preview/');
-  assert.equal(p.preview.outDir, '/opt/kodini/designer-preview');
+  assert.equal(p.preview.outDir, '/opt/kodini/designer-preview/kodinitools-home');
   assert.equal(publicProfileInfo(p).previewBase, '/designer/preview/');
+});
+
+test('loadActiveProfiles: PROFILES-Liste, Reihenfolge, Duplikate, Fehler', () => {
+  const one = loadActiveProfiles({});
+  assert.deepEqual([...one.keys()], ['kodinitools-home']);
+  const list = loadActiveProfiles({ PROFILES: ' kodinitools-home , ' });
+  assert.deepEqual([...list.keys()], ['kodinitools-home']);
+  assert.throws(
+    () => loadActiveProfiles({ PROFILES: 'kodinitools-home,kodinitools-home' }),
+    /doppelt/,
+  );
+  assert.throws(() => loadActiveProfiles({ PROFILES: ' , ' }), /leer/);
+  assert.throws(() => loadActiveProfiles({ PROFILES: 'kodinitools-home,fehlt' }), /nicht lesbar/);
+  // PROFILE_FILE hat Vorrang vor PROFILES.
+  const file = resolve(PROFILES_DIR, 'kodinitools-home/profile.json');
+  assert.deepEqual(
+    [...loadActiveProfiles({ PROFILE_FILE: file, PROFILES: 'x' }).keys()],
+    ['kodinitools-home'],
+  );
 });
 
 test('loadActiveProfile: PROFILE / PROFILE_FILE / Default', () => {

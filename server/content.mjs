@@ -13,8 +13,8 @@ async function readJsonFile(path, fallback) {
 }
 
 /** Aktueller Content-Stand (Overrides + Ticker + Medien + Standard-Locales). */
-export async function loadContent() {
-  const p = contentPaths();
+export async function loadContent(prof) {
+  const p = contentPaths(prof);
   const [overridesDe, overridesEn, tickerDe, tickerEn, media, localesDe, localesEn] =
     await Promise.all([
       readJsonFile(p.overridesDe, {}),
@@ -904,7 +904,7 @@ const pretty = (obj) => JSON.stringify(obj, null, 2) + '\n';
  * noch NICHT committet — das macht publish()).
  * payload: { overrides:{de,en}, ticker:{de,en}, media }
  */
-export async function saveContent(payload) {
+export async function saveContent(payload, prof) {
   if (!isPlainObject(payload)) throw new Error('ungültiger Payload');
   const overrides = payload.overrides || {};
   const ticker = payload.ticker || {};
@@ -915,7 +915,7 @@ export async function saveContent(payload) {
   const tEn = validateTicker(ticker.en ?? defaultTicker());
   const media = validateMedia(payload.media ?? defaultMedia());
 
-  const p = contentPaths();
+  const p = contentPaths(prof);
   await Promise.all([
     writeFile(p.overridesDe, pretty(oDe), 'utf8'),
     writeFile(p.overridesEn, pretty(oEn), 'utf8'),

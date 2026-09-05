@@ -6,7 +6,6 @@
 
 import { readdir, stat } from 'node:fs/promises';
 import { resolve, extname, basename } from 'node:path';
-import { profile } from './config.mjs';
 
 const FONT_EXT = new Set(['.woff2', '.woff', '.ttf', '.otf']);
 
@@ -27,7 +26,7 @@ export function fontLabel(name) {
   return name.slice(0, name.length - ext.length);
 }
 
-async function readFontDir(dir) {
+async function readFontDir(dir, urlPrefix) {
   let names;
   try {
     names = await readdir(dir);
@@ -48,7 +47,7 @@ async function readFontDir(dir) {
     out.push({
       name,
       label: fontLabel(name),
-      url: `${profile.fonts.urlPrefix.replace(/\/$/, '')}/${encodeURIComponent(name)}`,
+      url: `${urlPrefix}/${encodeURIComponent(name)}`,
       bytes: s.size,
     });
   }
@@ -59,11 +58,12 @@ async function readFontDir(dir) {
  * Verfügbare Schriften (nach Dateiname vereinigt, alphabetisch sortiert).
  * Webroot hat Vorrang; public/fonts füllt in der Entwicklung auf.
  */
-export async function listFonts() {
-  const dirs = profile.fonts.dirs;
+export async function listFonts(p) {
+  const dirs = p.fonts.dirs;
+  const prefix = p.fonts.urlPrefix.replace(/\/$/, '');
   const seen = new Map();
   for (const d of dirs) {
-    for (const f of await readFontDir(d)) {
+    for (const f of await readFontDir(d, prefix)) {
       if (!seen.has(f.name)) seen.set(f.name, f);
     }
   }

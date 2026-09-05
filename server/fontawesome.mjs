@@ -10,7 +10,6 @@
 
 import { readdir } from 'node:fs/promises';
 import { resolve, basename } from 'node:path';
-import { profile } from './config.mjs';
 
 // Icon-Sets mit ihrem Ordner unterhalb von fontawesome/. `key` = Set-Schlüssel.
 export const ICON_SETS = [
@@ -46,11 +45,11 @@ async function readIconDir(dir) {
  * Webroot hat Vorrang; public/fontawesome füllt in der Entwicklung auf.
  * Rückgabe: { solid: string[], regular: string[], brands: string[], admin: string[] }.
  */
-export async function listFontAwesome() {
+export async function listFontAwesome(p) {
   // Mehrere mögliche Basis-Orte (je nach nginx-Root/Deploy): direkt im Webroot,
   // unter public/ oder im Repo (Dev). Fehlende Pfade werden ignoriert, gefunden
   // wird vereinigt – so ist die Auflistung unabhängig vom konkreten Layout.
-  const bases = profile.fontawesome.dirs;
+  const bases = p.fontawesome.dirs;
   const out = {};
   for (const set of ICON_SETS) {
     const seen = new Set();

@@ -14,14 +14,13 @@ import {
 } from 'node:fs/promises';
 import { resolve, extname, basename, dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { config, profile } from './config.mjs';
 
-// Uploads bis zu dieser Größe werden zusätzlich ins Repo (public/uploads)
+// Uploads bis zu p.uploads.gitMaxBytes werden zusätzlich ins Repo (p.uploads.repoDir)
 // kopiert und per Git dauerhaft gesichert. Größere Dateien (Videos) bleiben nur
 // im Webroot, um das Repo nicht aufzublähen.
-export const UPLOADS_GIT_MAX_BYTES = profile.uploads.gitMaxBytes;
+
 // Öffentlicher URL-Präfix der Uploads (Profil, ohne Schluss-Slash), z. B. /uploads.
-const urlPrefix = () => profile.uploads.urlPrefix.replace(/\/$/, '');
+const urlPrefix = (p) => p.uploads.urlPrefix.replace(/\/$/, '');
 
 const ALLOWED = new Set([
   '.jpg',
@@ -76,7 +75,7 @@ function langSub(lang) {
  * @param {string} lang  'de' | 'en' | '' (gemeinsam)
  * @returns {{ url: string, filename: string, bytes: number, lang: string }}
  */
-export async function saveUpload(buf, filename, lang) {
+export async function saveUpload(p, buf, filename, lang) {
   const { stem, ext } = safeName(filename);
   if (!ALLOWED.has(ext)) {
     throw Object.assign(new Error(`Dateityp ${ext || '(keiner)'} nicht erlaubt`), {
@@ -88,7 +87,7 @@ export async function saveUpload(buf, filename, lang) {
   }
   const sub = langSub(lang);
   const rel = sub ? `${sub}/` : '';
-  const dir = resolve(config.uploadsDir, sub);
+  const dir = resolve(p.uploads.dir, sub);
   await mkdir(dir, { recursive: true });
   const { full, fname } = await uniquePath(dir, stem, ext);
   await writeFile(full, buf);
@@ -98,9 +97,9 @@ export async function saveUpload(buf, filename, lang) {
   // Build kopiert public/uploads nach dist/uploads und der Deploy spiegelt es
   // ins Webroot. Dadurch wird die Datei bei JEDEM Deploy wiederhergestellt.
   // Schlägt die Kopie fehl, gilt der Upload dennoch als erfolgreich.
-  if (profile.uploads.repoDir && buf.length <= UPLOADS_GIT_MAX_BYTES) {
+  if (p.uploads.repoDir && buf.length <= p.uploads.gitMaxBytes) {
     try {
-      const repoDir = resolve(profile.uploads.repoDir, sub);
+      const repoDir = resolve(p.uploads.repoDir, sub);
       await mkdir(repoDir, { recursive: true });
       const repoTarget = resolve(repoDir, fname);
       if (repoTarget !== full) await copyFile(full, repoTarget);
@@ -109,7 +108,7 @@ export async function saveUpload(buf, filename, lang) {
     }
   }
 
-  return { url: `${urlPrefix()}/${rel}${fname}`, filename: fname, bytes: buf.length, lang: sub };
+  return { url: `${urlPrefix(p)}/${rel}${fname}`, filename: fname, bytes: buf.length, lang: sub };
 }
 
 /** Prüft, dass ein Name ein einfacher Dateiname ist (kein Pfad/Traversal). */
@@ -125,11 +124,11 @@ function isPlainName(name) {
 }
 
 /** Dateien EINES Unterordners auflisten (sub='' = Wurzel = gemeinsam). */
-async function listDir(sub) {
+async function listDir(p, sub) {
   const rel = sub ? `${sub}/` : '';
   let names;
   try {
-    names = await readdir(resolve(config.uploadsDir, sub));
+    names = await readdir(resolve(p.uploads.dir, sub));
   } catch {
     return [];
   }
@@ -138,7 +137,7 @@ async function listDir(sub) {
     if (!isPlainName(name)) continue; // .gitkeep, Unterordner & Verstecktes überspringen
     let s;
     try {
-      s = await stat(resolve(config.uploadsDir, sub, name));
+      s = await stat(resolve(p.uploads.dir, sub, name));
     } catch {
       continue;
     }
@@ -146,7 +145,7 @@ async function listDir(sub) {
     out.push({
       name,
       path: `${rel}${name}`,
-      url: `${urlPrefix()}/${rel}${name}`,
+      url: `${urlPrefix(p)}/${rel}${name}`,
       bytes: s.size,
       mtime: s.mtimeMs,
     });
@@ -160,8 +159,8 @@ async function listDir(sub) {
  * { de: [...], en: [...], shared: [...] } (shared = alte, ungetrennte Dateien
  * direkt in /uploads).
  */
-export async function listUploads() {
-  const [de, en, shared] = await Promise.all([listDir('de'), listDir('en'), listDir('')]);
+export async function listUploads(p) {
+  const [de, en, shared] = await Promise.all([listDir(p, 'de'), listDir(p, 'en'), listDir(p, '')]);
   return { de, en, shared };
 }
 
@@ -176,13 +175,13 @@ function isValidUploadPath(p) {
  * Veröffentlichen mit committet (git add -A public/uploads), sodass die Datei
  * nicht beim nächsten Deploy zurückkehrt.
  */
-export async function deleteUpload(relPath) {
+export async function deleteUpload(p, relPath) {
   if (!isValidUploadPath(relPath)) {
     throw Object.assign(new Error('Ungültiger Pfad'), { statusCode: 400 });
   }
   const targets = [
-    resolve(config.uploadsDir, relPath),
-    profile.uploads.repoDir ? resolve(profile.uploads.repoDir, relPath) : '',
+    resolve(p.uploads.dir, relPath),
+    p.uploads.repoDir ? resolve(p.uploads.repoDir, relPath) : '',
   ];
   const removed = [];
   for (const t of targets) {
@@ -205,7 +204,7 @@ export async function deleteUpload(relPath) {
  * @param {string} fromPath  relativer Pfad, z.B. "banner.jpg" oder "de/x.jpg"
  * @param {string} toLang    'de' | 'en' | '' (gemeinsam)
  */
-export async function moveUpload(fromPath, toLang) {
+export async function moveUpload(p, fromPath, toLang) {
   if (!isValidUploadPath(fromPath)) {
     throw Object.assign(new Error('Ungültiger Quellpfad'), { statusCode: 400 });
   }
@@ -215,8 +214,8 @@ export async function moveUpload(fromPath, toLang) {
   if (toPath === fromPath) {
     throw Object.assign(new Error('Datei liegt bereits dort'), { statusCode: 400 });
   }
-  const srcWeb = resolve(config.uploadsDir, fromPath);
-  const dstWeb = resolve(config.uploadsDir, toPath);
+  const srcWeb = resolve(p.uploads.dir, fromPath);
+  const dstWeb = resolve(p.uploads.dir, toPath);
   // Quelle muss existieren, Ziel darf nicht existieren.
   try {
     await stat(srcWeb);
@@ -234,12 +233,12 @@ export async function moveUpload(fromPath, toLang) {
   await rename(srcWeb, dstWeb);
   // Repo-Kopie ebenfalls verschieben (falls vorhanden).
   try {
-    const srcRepo = profile.uploads.repoDir ? resolve(profile.uploads.repoDir, fromPath) : '';
-    const dstRepo = profile.uploads.repoDir ? resolve(profile.uploads.repoDir, toPath) : '';
+    const srcRepo = p.uploads.repoDir ? resolve(p.uploads.repoDir, fromPath) : '';
+    const dstRepo = p.uploads.repoDir ? resolve(p.uploads.repoDir, toPath) : '';
     await mkdir(dirname(dstRepo), { recursive: true });
     await rename(srcRepo, dstRepo);
   } catch {
     /* Repo-Kopie fehlt -> egal */
   }
-  return { ok: true, from: fromPath, to: toPath, url: `${urlPrefix()}/${toPath}` };
+  return { ok: true, from: fromPath, to: toPath, url: `${urlPrefix(p)}/${toPath}` };
 }
